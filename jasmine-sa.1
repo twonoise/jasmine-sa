@@ -1,0 +1,124 @@
+.TH JASMINE-SA "1" "May 2025" "jasmine-sa" "User Manual"
+
+.SH NAME
+.B jasmine-sa
+is multichannel hi-res Spectrum Analyzer for JACK
+
+.SH SYNOPSIS
+.B jasmine-sa
+[\fI\,options\/\fR] \fI\,port1 \/\fR[ \fI\,port2 \/\fR... ]
+
+.SS "options:"
+.TP
+\fB\-k\fR, \fB\-\-fftk\-max\fR=\fI\,N\/\fR
+set max FFT size to 2^k. Default: 20
+.TP
+\fB\-h\fR, \fB\-\-hz\fR=\fI\,N[,N[,N[,N]]]\/\fR
+X axis: min (Hz), max (Hz), grids, grid cell size (px). Default: 0,20000,10,50
+.TP
+\fB\-d\fR, \fB\-\-db\fR=\fI\,N[,N[,N[,N]]]\/\fR
+Y axis: min (dBV), max (dBV), grids, grid cell size (px). Default: -100,0,10,50
+.TP
+\fB\-D\fR, \fB\-\-db\-pwr=\fR...
+same as \fB\-d\fR, but with dB Power units
+.TP
+\fB\-u\fR, \fB\-\-sub\-grid\-size\fR=\fI\,N\/\fR
+sub\-grid pitch, px. Default: 5
+.TP
+\fB\-e\fR, \fB\-\-enob\fR
+show ENOB scale on right Y axis, and set Noise (Avg) mode for all channels as default.
+.TP
+\fB\-z\fR, \fB\-\-show\-zero\fR
+show zero input as minimal value (\fB\-327.67\fR dB) plot, rather than hide it.
+.TP
+\fB\-w\fR, \fB\-\-wait\-all\fR
+do not draw each channel as soon as it ready, but wait for all
+.TP
+\fB\-f\fR, \fB\-\-font\-colors\fR=\fI\,UINT64\/\fR
+up to 8 hex font colors as hue values; 0 is special value: Gray; 1 or ff is Red, 80 is Aqua. Default: 305019308050
+.TP
+\fB\-g\fR, \fB\-\-grid\-colors\fR=\fI\,UINT64\/\fR
+same as \fB\-f\fR, grid colors. Default: 56565656565656
+.TP
+\fB\-l\fR, \fB\-\-line\-colors\fR=\fI\,UINT64\/\fR
+same as \fB\-f\fR, ray colors. Default: a83300c06df08e22
+.TP
+\fB\-b\fR, \fB\-\-brightness\fR=\fI\,UINT64\/\fR
+up to 4 hex SSLL saturation+luma pairs: Reserved, Lines, Grid, Font. Default: ff80ffb2ff80ff80
+.TP
+\fB\-o\fR, \fB\-\-opacity\fR=\fI\,N\/\fR
+background opacity %, 0..100
+.TP
+\fB\-n\fR, \fB\-\-no\-progressbar\fR
+buffering & FFT bar shown when useful (like low FPS), but can be hidden always.
+.TP
+\fB\-s\fR, \fB\-\-crt\-ray\-style\fR=\fI\,N\/\fR
+CRT ray style, 0..7. Default: 0 is Auto
+.TP
+\fB\-r\fR, \fB\-\-crt\-ray\-real\fR
+ray brightness dim on long trace, like real CRT
+.TP
+\fB\-O\fR, \fB\-\-opengl\fR
+use openGL
+.TP
+\fB\-M\fR, \fB\-\-msaa\fR=\fI\,N\/\fR
+use MSAA, 0..4. Default: 0
+.TP
+\fB\-A\fR, \fB\-\-alpha\fR=\fI\,N\/\fR
+use Alpha transparency, 0 or 1 (default)
+.TP
+\fB\-t\fR, \fB\-\-threads\fR=\fI\,N\/\fR
+use 1 (default) to 4 fftw3's threads
+.TP
+\fB\-x\fR, \fB\-\-x\-pos\fR=\fI\,N\/\fR
+position on screen, px
+.TP
+\fB\-y\fR, \fB\-\-y\-pos\fR=\fI\,N\/\fR
+position on screen, px
+.TP
+\fB\-c\fR, \fB\-\-no\-caption\fR
+hide window caption, as well as other desktop manager decorations
+.TP
+\fB\-i\fR, \fB\-\-invert\fR
+invert luma (brightness)
+.TP
+\fB\-m\fR, \fB\-\-rev\-mouse\fR
+reverse mouse wheel
+.TP
+\fB\-v\fR, \fB\-\-verbose\fR=\fI\,N\/\fR
+message filter, 0..4. Default: 2
+.PP
+port1 [ port2 ... ] are 1 to 8 JACK \fIoutput\fR ports, `jack_lsp` to list.
+
+.SH DESCRIPTION
+jasmine-sa is multichannel hi-res Spectrum Analyzer for X11 & JACK (Linux 64bit only).
+See \fBREADME.md\fR.
+
+.SH FILES
+.TS
+l lx.
+\fBjasmine-sa.c\fR  C code
+\fBjasmine-sa.1\fR  Man page (this file)
+\fBREADME.md   \fR  Instruction manual
+.TE
+
+.SH COMPILE
+gcc -Wshadow -Wall -lm -ljack -lX11 -lXrender -lXss -lfftw3_threads -lfftw3 -o jasmine-sa ./jasmine-sa.c
+
+.SH DEBUG
+gcc -ggdb3 -Wall -lm -ljack -lX11 -lXrender -lXss -lfftw3_threads -lfftw3 -o jasmine-sa ./jasmine-sa.c && valgrind --leak-check=full --show-leak-kinds=all ./jasmine-sa -k 16 system:capture_1
+
+.SH TODO
+OpenGL not done yet. Work \fBin progress!\fR
+
+.SH CREDITS
+Please see tail of C code.
+
+.SH AUTHORS
+jpka (https://github.com/twonoise/)
+.br
+This is free software; see the source for copying conditions.  There is NO
+warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+
+.SH SEE ALSO
+JACK, fftw3, jaaa.
