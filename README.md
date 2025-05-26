@@ -119,7 +119,33 @@ then test it:
 
 We then can start our SA and see noise floor of real i/o and other things above 192 kS/s, which is typically impossible, and while upper half can't show us new tones, it can show how resampler and codec filters things; it also prepare us to have more than 192k i/o, we know it will work and displayed as expected, and we can estimate if we have enough CPU horsepower for that. But most good news that our "radio" DSPs (w/radio mixers... etc), inside of i/o boundary, will be plotted exactly as should.
 
+Q & A
+-----
 
+_Where is log scale?_
+---------------------
+We have log (dB) Y scale. As for X scale, it is linear only. While most audio(music)-centric analyzers are often have log X scale, this SA is not (only) musical, but more like scientific, these instrumensts often try to avoid log X scale, except phase noise measurements:
+
+* There is no zero/negative frequencies allowed;
+* And, there is no measurements are possible, only estimations, as no Exact, Max, or Avg, display method for entire scale is useful.
+    
+But feel free to implement log scale yourself: our code is _intended_ for user enhancements.
+
+_I hate your pixels._
+---------------------
+There are texels.<br>
+And we have full openGL'ed GPU-driven antialiasing (MSAA). <br>
+But, yes, there is a bug for Intel GPU (or driver?) which blocks both **MSAA** and **Alpha** (**transparency**) at same time [5]. 
+
+TESTING
+-------
+TODO Move it to man page.
+
+Test for memory leaks. Note that either _all_ openGL apps have some leaks in order of 200...300 kb; or, there are `valgrind` false starts. [6] (It is so-so everywhere, still no exact answer).<br>
+So i prepare some filters.
+
+    gcc -ggdb3 -Wall -lm -ljack -lX11 -lXrender -lXss -lGL -lfftw3_threads -lfftw3 -o jasmine-sa ./jasmine-sa.c && echo -e '{\n1\nMemcheck:Leak\n...\nsrc:dl-open.c:874\n}\n{\n2\nMemcheck:Leak\n...\nsrc:dl-init.c:121\n}\n' > /tmp/s && valgrind --leak-check=full --show-leak-kinds=all --suppressions=/tmp/s ./jasmine-sa -k 16 system:capture_1 -e -O -M 0 -A 1 -o 0
+    
 
 CREDITS
 -------
@@ -127,6 +153,8 @@ CREDITS
 * [2] https://kluedo.ub.rptu.de/frontdoor/deliver/index/docId/4293/file/exact_fft_measurements.pdf
 * [3] https://www.gaussianwaves.com/2020/09/equivalent-noise-bandwidth-enbw-of-window-functions/
 * [4] Analog Devices MT-001.pdf
+* [5] https://stackoverflow.com/questions/79065474/transparent-background-and-msaa-at-same-time-for-opengl-window-on-x11
+* [6] https://gitlab.freedesktop.org/mesa/mesa/-/issues/11275
 * Credits for C code are shown at tail of C file.
 
 
