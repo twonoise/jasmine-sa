@@ -131,17 +131,22 @@ We have log (dB) Y scale. As for X scale, it is linear only. While most audio(mu
     
 But feel free to implement log scale yourself: our code is _intended_ for user enhancements.
 
+_How about inter-bin interpolation?_
+------------------------------------
+I can't find or estimate noise specs of these Time-Frequency Reassigned Spectrogram transforms [7] [8]. Without that, we can't make useful measurements. Btw, there are other SA where it is implemented, like x42 [9].
+
 _I hate your pixels._
 ---------------------
 There are texels.<br>
 And we have full openGL'ed GPU-driven antialiasing (MSAA). <br>
 But, yes, there is a bug for Intel GPU (or driver?) which blocks both **MSAA** and **Alpha** (**transparency**) at same time [5]. 
 
+
 TESTING
 -------
-TODO Move it to man page.
+<small>TODO Move it to man page.</small>
 
-Test for memory leaks. Note that either _all_ openGL apps have some leaks in order of 200...300 kb; or, there are `valgrind` false starts. [6] (It is so-so everywhere, still no exact answer).<br>
+Test for memory leaks. Note that either _all_ openGL apps have some leaks in order of 200...300 kb (_i talk about Linux only_); or, there are `valgrind` false starts. [6] (It is so-so everywhere, still no exact answer).<br>
 So i prepare some filters.
 
     gcc -ggdb3 -Wall -lm -ljack -lX11 -lXrender -lXss -lGL -lfftw3_threads -lfftw3 -o jasmine-sa ./jasmine-sa.c && echo -e '{\n1\nMemcheck:Leak\n...\nsrc:dl-open.c:874\n}\n{\n2\nMemcheck:Leak\n...\nsrc:dl-init.c:121\n}\n' > /tmp/s && valgrind --leak-check=full --show-leak-kinds=all --suppressions=/tmp/s ./jasmine-sa -k 16 system:capture_1 -e -O -M 0 -A 1 -o 0
@@ -155,6 +160,9 @@ CREDITS
 * [4] Analog Devices MT-001.pdf
 * [5] https://stackoverflow.com/questions/79065474/transparent-background-and-msaa-at-same-time-for-opengl-window-on-x11
 * [6] https://gitlab.freedesktop.org/mesa/mesa/-/issues/11275
+* [7] https://hal.science/hal-00414583/document
+* [8] https://people.ece.cornell.edu/land/PROJECTS/ReassignFFT/index.html
+* [9] https://github.com/x42/spectra.lv2
 * Credits for C code are shown at tail of C file.
 
 
