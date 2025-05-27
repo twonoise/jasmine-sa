@@ -31,32 +31,29 @@ show ENOB scale on right Y axis, and set Noise (Avg) mode for all channels as de
 \fB\-z\fR, \fB\-\-show\-zero\fR
 show zero input as minimal value (\fB\-327.67\fR dB) plot, rather than hide it.
 .TP
-\fB\-w\fR, \fB\-\-wait\-all\fR
-do not draw each channel as soon as it ready, but wait for all
+\fB\-c\fR, \fB\-\-colors\fR=\fI\,UINT64\/\fR
+up to 8 hex colors as hue values, seven font colors and one grid color; 0 is special value: Gray; 1 or ff is Red, 80 is Aqua. Default: 501930805056
 .TP
-\fB\-f\fR, \fB\-\-font\-colors\fR=\fI\,UINT64\/\fR
-up to 8 hex font colors as hue values; 0 is special value: Gray; 1 or ff is Red, 80 is Aqua. Default: 305019308050
+\fB\-r\fR, \fB\-\-ray\-colors\fR=\fI\,UINT64\/\fR
+same as \fB\-f\fR, ray colors. Default: a83300c06df08d20
 .TP
-\fB\-g\fR, \fB\-\-grid\-colors\fR=\fI\,UINT64\/\fR
-same as \fB\-f\fR, grid colors. Default: 56565656565656
-.TP
-\fB\-l\fR, \fB\-\-line\-colors\fR=\fI\,UINT64\/\fR
-same as \fB\-f\fR, ray colors. Default: a83300c06df08e22
-.TP
-\fB\-b\fR, \fB\-\-brightness\fR=\fI\,UINT64\/\fR
+\fB\-l\fR, \fB\-\-sat\-luma\fR=\fI\,UINT64\/\fR
 up to 4 hex SSLL saturation+luma pairs: Reserved, Lines, Grid, Font. Default: ff80ffb2ff80ff80
+.TP
+\fB\-s\fR, \fB\-\-ray\-style\fR=\fI\,N\/\fR
+CRT ray style, 0..7. Default: 0 is Auto
+.TP
+\fB\-j\fR, \fB\-\-ray\-jog\fR=\fI\,N\/\fR
+CRT ray brightness dim on long jog, like real CRT
+.TP
+\fB\-g\fR, \fB\-\-gpu\-comp\fR=\fI\,N\/\fR
+openGL point & line sizes compensation % for particular GPU, 0..100, like 0 for Intel, 50 for Nvidia
 .TP
 \fB\-o\fR, \fB\-\-opacity\fR=\fI\,N\/\fR
 background opacity %, 0..100
 .TP
 \fB\-n\fR, \fB\-\-no\-progressbar\fR
 buffering & FFT bar shown when useful (like low FPS), but can be hidden always.
-.TP
-\fB\-s\fR, \fB\-\-crt\-ray\-style\fR=\fI\,N\/\fR
-CRT ray style, 0..7. Default: 0 is Auto
-.TP
-\fB\-r\fR, \fB\-\-crt\-ray\-real\fR
-ray brightness dim on long trace, like real CRT
 .TP
 \fB\-O\fR, \fB\-\-opengl\fR
 use openGL
@@ -65,7 +62,7 @@ use openGL
 use MSAA, 0..4. Default: 0
 .TP
 \fB\-A\fR, \fB\-\-alpha\fR=\fI\,N\/\fR
-use Alpha transparency, 0 or 1 (default)
+use Alpha transparency, 0 or 1 (default), see also -o
 .TP
 \fB\-t\fR, \fB\-\-threads\fR=\fI\,N\/\fR
 use 1 (default) to 4 fftw3's threads
@@ -76,8 +73,8 @@ position on screen, px
 \fB\-y\fR, \fB\-\-y\-pos\fR=\fI\,N\/\fR
 position on screen, px
 .TP
-\fB\-c\fR, \fB\-\-no\-caption\fR
-hide window caption, as well as other desktop manager decorations
+\fB\-b\fR, \fB\-\-no\-border\fR
+hide window caption and border
 .TP
 \fB\-i\fR, \fB\-\-invert\fR
 invert luma (brightness)
@@ -106,10 +103,10 @@ l lx.
 gcc -Wshadow -Wall -lm -ljack -lX11 -lXrender -lXss -lfftw3_threads -lfftw3 -o jasmine-sa ./jasmine-sa.c
 
 .SH DEBUG
-gcc -ggdb3 -Wall -lm -ljack -lX11 -lXrender -lXss -lGL -lfftw3_threads -lfftw3 -o jasmine-sa ./jasmine-sa.c && echo -e '{\n1\nMemcheck:Leak\n...\nsrc:dl-open.c:874\n}\n{\n2\nMemcheck:Leak\n...\nsrc:dl-init.c:121\n}\n' > /tmp/s && valgrind --leak-check=full --show-leak-kinds=all --suppressions=/tmp/s ./jasmine-sa -k 16 system:capture_1 -e -O -M 0 -A 1 -o 0
+gcc -ggdb3 -Wall -lm -ljack -lX11 -lXrender -lXss -lGL -lfftw3_threads -lfftw3 -o jasmine-sa ./jasmine-sa.c && echo -e '{\\n1\\nMemcheck:Leak\\n...\\nsrc:dl-open.c:874\\n}\\n{\\n2\\nMemcheck:Leak\\n...\\nsrc:dl-init.c:121\\n}\\n' > /tmp/s && valgrind --leak-check=full --show-leak-kinds=all --suppressions=/tmp/s ./jasmine-sa -k 16 system:capture_1 -e -O -M 0 -A 1 -o 0
 
 .SH TODO
-OpenGL not done yet. Work \fBin progress!\fR
+OpenGL replots should be better matched with XFlush(). Work \fBin progress!\fR
 
 .SH CREDITS
 Please see tail of C code.
