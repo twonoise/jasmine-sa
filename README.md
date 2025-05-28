@@ -36,7 +36,7 @@ _Stop_: it is important here to understand why only noise are amplificated, but 
 
 Other problem (for all type of SA, but mostly for FFT SA due to way higher amount of result data/points available) is what to do if we want to plot more points than our X axis allows. The obvious downscale interpolation will not work here, as no physical meaning of it: we will see good picture, but won't be able to measure anything on it (in fact, we can measure noise, but only in case we have integer relation between FFT points quantity for current span and X axis points, i.e. equal FFT points in each X bin).
 
-The correct approach is to use MAX function if we measure signals, and AVG function if we measure noise (please also check [1]:p.17). As there is no "perfect" display approach for FFT SA, operator should be familiar with run time display mode selection. It often comblied with Tone-Noise measurement mode switch, mentioned above; we also do that in our code.
+The correct approach is to use MAX function if we measure signals, and AVG function if we measure noise (please also check [1]:p.17). As there is no "perfect" display approach for FFT SA, operator should be familiar with run time display mode selection. It often combined with Tone-Noise measurement mode switch, mentioned above; we also do that in our code.
 
 Do not wonder if you can't find peaks you expect: it's probably Noise measurement (AVG) mode, when peaks will be reduced or lost. Opposite for that, Signal measurement (MAX) mode guarantees that peaks will be visible, and their amplitudes will be "correct" (correct if not short bursts/fast changes, see above). Btw, bursts are have way more chances to be catched with FFT SA, due to it "sees" all points in parallel, while real SA is sequental.
 
