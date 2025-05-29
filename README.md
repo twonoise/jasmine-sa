@@ -12,7 +12,7 @@ Note: Mouse still can be used for markers (added per request).
 * Highly optimized for CPU usage.
 * Background transparency for compare two spectrogram windows, or compare live spectrogram with saved picture used as substrate.
 * Uses only X11 internal font guaranteed to be available, ASCII only, gives uniform look and metrics everywhere. Pixel-precise and predictable, allows sharp look for any screens & LED panels.
-* Optional OpenGL, include both MSAA and Alpha transparency (TODO).
+* Optional OpenGL, include both MSAA and Alpha transparency (_Testing_).
 * Brightness (luma) inversion option, HSL color model based.
 * Per-channel FFT windows, runtime selected.
 * One C file, with minimal and most stable deps.
@@ -62,8 +62,9 @@ Btw, z is not ENOB, while they can match exactly (like for ENOB calibration sour
 
 Control
 -------
-* Keyboard: F1...F10, alphanumeric, +, - (PgUp, PgDn) and Cursor keys. 
-* Mouse: Absolute (left) and Relative (right button) markers; wheel as keyboard +, -.
+* _Keyboard_: F1...F10, alphanumeric, +, - (PgUp, PgDn) and Cursor keys; <br>
+**h**, **k**, **m** for frequency units entry.
+* _Mouse_: Absolute (left) and Relative (right button) markers; wheel as keyboard +, -.
 
 Code
 ----
