@@ -124,6 +124,16 @@ then test it:
 
 We then can start our SA and see noise floor of real i/o and other things above 192 kS/s, which is typically impossible, and while upper half can't show us new tones, it can show how resampler and codec filters things; it also prepare us to have more than 192k i/o, we know it will work and displayed as expected, and we can estimate if we have enough CPU horsepower for that. But most good news that our "radio" DSPs (w/radio mixers... etc), inside of i/o boundary, will be plotted exactly as should.
 
+EXAMPLES
+--------
+From as simple as (add `-e` for ENOB scale)...
+
+    jasmine-sa system:capture_1 system:capture_2
+    
+...To be eyecandy on top of your DAW (will also work as _JACK application_ with **Carla**)
+
+    jasmine-sa system:mic -O -A 1 -M 4 -o 0 -t -b -d -60,0,2,32 -h 0,20000,10,32 -p 4 -z -C CCEE -u 4 -x 100 -y 200
+
 Q & A
 -----
 
