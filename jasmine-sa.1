@@ -25,6 +25,9 @@ Y axis: min (dBV), max (dBV), grids, grid cell size (px). Default: -100,0,10,50
 \fB\-D\fR, \fB\-\-db\-pwr=\fR...
 same as \fB\-d\fR, but with dB Power units
 .TP
+\fB\-p\fR, \fB\-\-phosphor\fR=\fI\,N\/\fR
+auto memory levels, 1..16. Default: 0
+.TP
 \fB\-u\fR, \fB\-\-sub\-grid\-size\fR=\fI\,N\/\fR
 sub\-grid pitch, px. Default: 5
 .TP
@@ -35,19 +38,22 @@ show ENOB scale on right Y axis, and set Noise (Avg) mode for all channels as de
 show zero input as minimal value (\fB\-327.67\fR dB) plot, rather than hide it.
 .TP
 \fB\-c\fR, \fB\-\-colors\fR=\fI\,UINT64\/\fR
-up to 8 hex colors as hue values, seven font colors and one grid color; 0 is special value: Gray; 1 or ff is Red, 80 is Aqua. Default: 501930805056
+up to 8 hex colors as hue values, seven \fBFont\fR colors and one \fBGrid\fR color; 0 is special value: Gray; 1 or ff is Red, 80 is Aqua. Default: 501930805056
 .TP
 \fB\-C\fR, \fB\-\-ray\-colors\fR=\fI\,UINT64\/\fR
 same as \fB\-c\fR, ray colors. Default: a83300c06df08d20
 .TP
 \fB\-l\fR, \fB\-\-sat\-luma\fR=\fI\,UINT64\/\fR
-up to 4 hex SSLL saturation+luma pairs: Reserved, Lines, Grid, Font. Default: ff80ffb2ff80ff80
+up to 4 hex SSLL saturation+luma pairs: Reserved, \fBLines, Grid, Font\fR. Default: ff80ffb2ff80ff80
 .TP
 \fB\-s\fR, \fB\-\-ray\-style\fR=\fI\,N\/\fR
 CRT ray style, 0..7. Default: 0 is Auto
 .TP
 \fB\-f\fR, \fB\-\-ray\-fade\fR=\fI\,N\/\fR
 CRT ray brightness dim on long jog, like real CRT
+.TP
+\fB\-m\fR, \fB\-\-memory\-slots\fR=\fI\,N\/\fR
+memory slots to use, 0..15 (default)
 .TP
 \fB\-g\fR, \fB\-\-gpu\-comp\fR=\fI\,N\/\fR
 openGL point & line sizes compensation % for particular GPU, 0..100, like 0 for Intel, 50 for Nvidia
@@ -56,7 +62,16 @@ openGL point & line sizes compensation % for particular GPU, 0..100, like 0 for 
 background opacity %, 0..100
 .TP
 \fB\-n\fR, \fB\-\-no\-progressbar\fR
-buffering & FFT bar shown when useful (like low FPS), but can be hidden always.
+buffering & FFT bar shown when useful (like low FPS), but can be hidden always
+.TP
+\fB\-q\fR, \fB\-\-no\-legend\fR
+hide right info pane
+.TP
+\fB\-t\fR, \fB\-\-trim\fR
+hide everything except plot area
+.TP
+\fB\-a\fR, \fB\-\-no\-ss\-disable\fR
+turn off screen saver control
 .TP
 \fB\-O\fR, \fB\-\-opengl\fR
 use openGL
@@ -82,7 +97,7 @@ hide window caption and border
 \fB\-i\fR, \fB\-\-invert\fR
 invert luma (brightness)
 .TP
-\fB\-m\fR, \fB\-\-rev\-mouse\fR
+\fB\-w\fR, \fB\-\-rev\-wheel\fR
 reverse mouse wheel
 .TP
 \fB\-v\fR, \fB\-\-verbose\fR=\fI\,N\/\fR
@@ -91,7 +106,7 @@ message filter, 0..4. Default: 2
 port1 [ port2 ... ] are 1 to 8 JACK \fIoutput\fR ports, `jack_lsp` to list.
 
 .SH DESCRIPTION
-jasmine-sa is multichannel hi-res Spectrum Analyzer for X11 & JACK (Linux 64bit only).
+jasmine-sa is multichannel hi-res Spectrum Analyzer for X11 & JACK (Linux, 64 bit).
 See \fBREADME.md\fR.
 
 .SH FILES
@@ -102,10 +117,10 @@ l lx.
 \fBREADME.md   \fR  Instruction manual
 .TE
 
-.SH COMPILE
-gcc -Wshadow -Wall -g -O4 -ftree-vectorize -mavx -lm -ljack -lX11 -lXrender -lXss -lGL -lfftw3_threads -lfftw3 -o jasmine-sa ./jasmine-sa.c
+.SH COMPILE example
+gcc -Wshadow -Wall -g -O3 -mavx2 -ffast-math -fopt-info-vec-optimized -march=native -lm -ljack -lX11 -lXrender -lXss -lGL -lfftw3_threads -lfftw3 -o jasmine-sa ./jasmine-sa.c
 
-.SH DEBUG
+.SH DEBUG example
 gcc -ggdb3 -Wall -lm -ljack -lX11 -lXrender -lXss -lGL -lfftw3_threads -lfftw3 -o jasmine-sa ./jasmine-sa.c && echo -e '{\\n1\\nMemcheck:Leak\\n...\\nsrc:dl-open.c:874\\n}\\n{\\n2\\nMemcheck:Leak\\n...\\nsrc:dl-init.c:121\\n}\\n' > /tmp/s && valgrind --leak-check=full --show-leak-kinds=all --suppressions=/tmp/s ./jasmine-sa -k 16 system:capture_1 -e -O -M 0 -A 1 -o 0
 
 .SH TODO
