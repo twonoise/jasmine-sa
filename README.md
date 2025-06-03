@@ -5,8 +5,9 @@ HIGHLIGHTS
 ----------
 * Closes the gap between <tt>fftw3</tt> library power and existing audio analyzers based on it, most of which are made for music, so looks a bit limited for measurements; one close to measurement precision is <tt>jaaa</tt>.
 * No any UI deps, such as Qt or Gnome widgets, mouse, window managers, decorators, desktop stuff. It uses bare display and keyboard only, like one from golden era of instruments, HP 8563E. <br>
-Note: Mouse still can be used for markers (added per request).
-* No any tuning / scaling coef's, just bare theory implemented.
+_Note_: Mouse still can be used for markers (added per request).
+* No any tuning factors, just bare theory as is.
+* Highly customizable window behaviour, size, and colors.
 * It can be run without desktop, via <tt>xinit</tt>.
 * Suitable for both small and large screens.
 * Highly optimized for CPU usage.
@@ -19,7 +20,7 @@ Note: Mouse still can be used for markers (added per request).
 
 DESCRIPTION
 -----------
-Note that we have man page.
+_Note that we have man page._
 
 Please be familiar with DFT itself, and read at least [1], [2], [4].
 
@@ -62,8 +63,9 @@ Btw, z is not ENOB, while they can match exactly (like for ENOB calibration sour
 
 Control
 -------
-* _Keyboard_: F1...F10, alphanumeric, +, - (PgUp, PgDn) and Cursor keys; <br>
-**h**, **k**, **m** for frequency units entry.
+* _Keyboard_: Esc, F1...F10, alphanumeric, +, - (PgUp, PgDn) and Cursor keys; <br>
+**h**, **k**, **m** for frequency units entry;<br>
+**x** for exit.
 * _Mouse_: Absolute (left) and Relative (right button) markers; wheel as keyboard +, -.
 
 Code
@@ -132,7 +134,7 @@ From as simple as (add `-e` for ENOB scale)...
     
 ...To smooth transparent overlay bar on given screen place on your DAW (will also work as _JACK application_ with **Carla**)
 
-    jasmine-sa system:mic -O -A 1 -M 4 -o 0 -t -b -d -60,0,2,32 -h 0,20000,10,32 -p 4 -z -C CCEE -u 4 -x 100 -y 200
+    jasmine-sa system:mic -O -A 1 -M 4 -o 0 -d -60,0,2,32 -h 0,2500,10,32 -p 4 -z -C CCEE -u 4 -x 100 -y 200 -b 31
 
 Q & A
 -----
@@ -150,16 +152,22 @@ _How about inter-bin interpolation?_
 ------------------------------------
 I can't find or estimate noise specs of these Time-Frequency Reassigned Spectrogram transforms [7] [8]. Without that, we can't make useful measurements. Btw, there are other SA where it is implemented, like x42 [9].
 
-_I hate your pixels._
+_Offline or file support?_
+------------------------
+There is no, currently.
+* For _incoming_ data array, it can be "played" as `.wav` file, then feed to us as usual. Incoming samples often are 32-bit `float`s, and better if in range **[-1.0 ... 1.0]**. But can be any other "playable" data, if it can be "played" with some JACK audio player without distortion. Note that **JACK Transport** allow us to sync several players, so we get multiple incoming channels with zero skew guaranteed.
+* As for _resulting_ FFT data, there are last 16 screens are holded in screen memory; it should be easy to dump it to binary file, please feel free to implement this command. Data format is signed shorts (Q1.15) with **-327.67** to **327.67 dB** range, and **-32768** value is NODATA (out of bounds / non existent, etc).
+
+_I hate your pixels :-[_
 ---------------------
 There are **texels**.<br>
 And we have full openGL'ed GPU-driven antialiasing (MSAA). <br>
-But, yes, there is a bug for Intel GPU (or driver?) which blocks both **MSAA** and **Alpha** (**transparency**) at same time [5]. 
+But, yes, there is a bug for Intel GPU (or driver?) which blocks both **MSAA** and **Alpha** (**transparency**) at same time [5] [5a]. 
 
 
 TESTING
 -------
-<small>TODO Move it to man page.</small>
+_See also man page._
 
 Test for memory leaks. Note that either _all_ openGL apps have some leaks in order of 200...300 kb (_i talk about Linux only_); or, there are `valgrind` false starts. [6] (It is so-so everywhere, still no exact answer).<br>
 So i prepare some filters.
@@ -174,6 +182,7 @@ CREDITS
 * [3] https://www.gaussianwaves.com/2020/09/equivalent-noise-bandwidth-enbw-of-window-functions/
 * [4] Analog Devices MT-001.pdf
 * [5] https://stackoverflow.com/questions/79065474/transparent-background-and-msaa-at-same-time-for-opengl-window-on-x11
+* [5a] https://www.reddit.com/r/opengl/comments/1dhwgn1/alpha_to_coverage_and_intel_gpus/
 * [6] https://gitlab.freedesktop.org/mesa/mesa/-/issues/11275
 * [7] https://hal.science/hal-00414583/document
 * [8] https://people.ece.cornell.edu/land/PROJECTS/ReassignFFT/index.html
