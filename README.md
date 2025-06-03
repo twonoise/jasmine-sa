@@ -48,7 +48,7 @@ Some other controls
 
 _Video bandwidth_, or **VBW**, can be limited for some cases like stable noise floor measure. First, we setup all things (frequency, etc) and see if we have expected picture; then, we limit VBW to filter it, and wait a lot more for stable picture. There are two types of VBW limiters. For real SA, it is often multi-point averaging (imagine an LPF at CRT ray Y deflection input). For FFT SA, there is also independent (per-point) filter often used; they also can be combined. We use only per-point one in our code yet. Note that VBW is CRT trace run time thing, it will not used when Stopped state.
 
-_Y scale_ can be shifted up and down, and scale can be selected to be dB re:voltage, or dB re:power. Most baseband VU meters, like for speech or music, are use voltage, so we have it as default. dBPwr stretch Y scale two times, and also can be used to for more precise visual measurements.
+_Y scale_ can be shifted up and down, and scale can be selected to be **dB re:voltage**, or **dB re:power**. Most baseband VU meters, like for speech or music, are use voltage, so we have it as default. dBPwr stretch Y scale two times, and also can be used to for more precise visual measurements.
 
 We have run time per-channel (as well as for all channels at same time) _selection of windowing functions_ (there are four currently) and _MAX (Tone) vs AVG (Noise)_ measurements. Feeding one input signal to several channels, we can see all these results at one screen. Tab key used to jump marker between channels.
 
@@ -132,9 +132,9 @@ From as simple as (add `-e` for ENOB scale)...
 
     jasmine-sa system:capture_1 system:capture_2
     
-...To smooth transparent overlay bar on given screen place on your DAW (will also work as _JACK application_ with **Carla**)
+...To smooth transparent overlay bar on given screen place on your DAW, with tiny CPU usage (will also work as _JACK application_ with **Carla**)
 
-    jasmine-sa system:mic -O -A 1 -M 4 -o 0 -d -60,0,2,32 -h 0,2500,10,32 -p 4 -z -C CCEE -u 4 -x 100 -y 200 -b 31
+    jasmine-sa system:mic -O -A 1 -M 4 -o 0 -d -60,0,2,32 -h 0,2500,10,32 -p 4 -z -q CCEE -u 4 -x 100 -y 200 -b 31
 
 Q & A
 -----
@@ -155,7 +155,8 @@ I can't find or estimate noise specs of these Time-Frequency Reassigned Spectrog
 _Offline or file support?_
 ------------------------
 There is no, currently.
-* For _incoming_ data array, it can be "played" as `.wav` file, then feed to us as usual. Incoming samples often are 32-bit `float`s, and better if in range **[-1.0 ... 1.0]**. But can be any other "playable" data, if it can be "played" with some JACK audio player without distortion. Note that **JACK Transport** allow us to sync several players, so we get multiple incoming channels with zero skew guaranteed.
+* For _incoming_ data array, it can be "played" as `.wav` file, then feed to us as usual. Incoming samples often are 32-bit `float`s, and better if in range **[-1.0 ... 1.0]**. But can be any other "playable" data, if it can be "played" with some JACK audio player without distortion. Multi-channel audio files are almost always contains _interleaved_ data.<br>
+Note that **JACK Transport** allow us to sync several players, so we get multiple incoming channels with zero skew guaranteed. Good if we have several _non-interleaved_ data sets.
 * As for _resulting_ FFT data, there are last 16 screens are holded in screen memory; it should be easy to dump it to binary file, please feel free to implement this command. Data format is signed shorts (Q1.15) with **-327.67** to **327.67 dB** range, and **-32768** value is NODATA (out of bounds / non existent, etc).
 
 _I hate your pixels :-[_
