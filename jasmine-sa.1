@@ -16,6 +16,9 @@ set max FFT size to 2^k. Default: 20
 \fB\-r\fR, \fB\-\-roll\fR=\fI\,N\/\fR
 max roll factor, 1..256. Default: 16
 .TP
+\fB\-j\fR, \fB\-\-jobs\fR=\fI\,N\/\fR
+use 1 (default) to 4 fftw3's threads (aka jobs)
+.TP
 \fB\-h\fR, \fB\-\-hz\fR=\fI\,N[,N[,N[,N]]]\/\fR
 X axis: min (Hz), max (Hz), grids, grid cell size (px). Default: 0,20000,10,50
 .TP
@@ -40,7 +43,7 @@ show zero input as minimal value (\fB\-327.67\fR dB) plot, rather than hide it.
 \fB\-c\fR, \fB\-\-colors\fR=\fI\,UINT64\/\fR
 up to 8 hex colors as hue values, seven \fBFont\fR colors and one \fBGrid\fR color; 0 is special value: Gray; 1 or ff is Red, 80 is Aqua. Default: 501930805056
 .TP
-\fB\-C\fR, \fB\-\-ray\-colors\fR=\fI\,UINT64\/\fR
+\fB\-q\fR, \fB\-\-ray\-colors\fR=\fI\,UINT64\/\fR
 same as \fB\-c\fR, ray colors. Default: a83300c06df08d20
 .TP
 \fB\-l\fR, \fB\-\-sat\-luma\fR=\fI\,UINT64\/\fR
@@ -61,17 +64,19 @@ openGL point & line sizes compensation % for particular GPU, 0..100, like 0 for 
 \fB\-o\fR, \fB\-\-opacity\fR=\fI\,N\/\fR
 background opacity %, 0..100
 .TP
-\fB\-n\fR, \fB\-\-no\-progressbar\fR
-buffering & FFT bar shown when useful (like low FPS), but can be hidden always
-.TP
-\fB\-q\fR, \fB\-\-no\-legend\fR
-hide right info pane
-.TP
-\fB\-t\fR, \fB\-\-trim\fR
-hide everything except plot area
-.TP
-\fB\-a\fR, \fB\-\-no\-ss\-disable\fR
-turn off screen saver control
+\fB\-b\fR, \fB\-\-bits\fR=\fI\,N\/\fR
+window behavior bits, default: 0, are sum of:
+  1: Lock window position
+  2: Hide window caption and border
+  4: Always on top
+  8: Disable screen saver
+ 16: Hide everything except plot area
+ 32: Hide right info pane aka legend
+ 64: No progressbar. It shows buffering & FFT
+.br
+     when low FPS, but can be hidden always
+.br
+128: Invert luma (brightness)
 .TP
 \fB\-O\fR, \fB\-\-opengl\fR
 use openGL
@@ -82,20 +87,11 @@ use MSAA, 0..4. Default: 0
 \fB\-A\fR, \fB\-\-alpha\fR=\fI\,N\/\fR
 use Alpha transparency, 0 or 1 (default), see also -o
 .TP
-\fB\-j\fR, \fB\-\-jobs\fR=\fI\,N\/\fR
-use 1 (default) to 4 fftw3's threads (aka jobs)
-.TP
 \fB\-x\fR, \fB\-\-x\-pos\fR=\fI\,N\/\fR
 position on screen, px
 .TP
 \fB\-y\fR, \fB\-\-y\-pos\fR=\fI\,N\/\fR
 position on screen, px
-.TP
-\fB\-b\fR, \fB\-\-no\-border\fR
-hide window caption and border
-.TP
-\fB\-i\fR, \fB\-\-invert\fR
-invert luma (brightness)
 .TP
 \fB\-w\fR, \fB\-\-rev\-wheel\fR
 reverse mouse wheel
