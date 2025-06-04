@@ -4,7 +4,7 @@ Jasmine-SA is multichannel hi-res Spectrum Analyzer for X11 &amp; JACK (Linux 64
 HIGHLIGHTS
 ----------
 * Closes the gap between <tt>fftw3</tt> library power and existing audio analyzers based on it, most of which are made for music, so looks a bit limited for measurements; one close to measurement precision is <tt>jaaa</tt>.
-* No any UI deps, such as expiring each few years Qt or Gnome widgets; mouse, window managers, decorators, desktop stuff. It uses bare display and keyboard only, like one from golden era of instruments, HP 8563E. <br>
+* No any UI deps, such as expiring each few years Qt or Gnome widgets. Not depends on (but feels well with any of) mouse, window managers, decorators, desktop things. It uses bare display and keyboard only, like one from golden era of instruments, HP 8563E. <br>
 _Note_: Mouse still can be used for markers (added per request).
 * No any tuning factors, just bare theory implemented as is.
 * Highly customizable window behaviour, size, and colors.
