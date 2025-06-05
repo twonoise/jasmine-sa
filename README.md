@@ -90,6 +90,24 @@ _Perfect noise_ sine source with ~25 ENOB. The problem with it is exact ENOB of 
 
     gst-launch-1.0 audiotestsrc freq=749.999 volume=1.0 ! audio/x-raw,channels=2 ! jackaudiosink
     
+The ENOB of 32-bit float obviously defined and should be well known, but no any paper about it. Trying to estimate it myself, gives value of 24.6535, which is differ from ~25 i get during calibrated measurements:
+
+<details> 
+ <summary>[C code]</summary>
+ 
+    // Prints effective number of bits of ideal sine, possible using float. 
+    // Ideal means unity amplitude and orthogonal to wavetable buffer used (for Faust it's 65536 samples).
+	   void print_enob_for_sine_float (void)
+    {
+		   double result = 0;
+		   for (int i = 0; i < 23; i++) // Float have 23 bits of mantissa
+			   result = result + (asin(1.0/(1 << i)) - asin(1.0/(1 << (i+1)))) * (24 + i);
+		   result = result / (M_PI / 2.0);
+		   printf("%f\n", result); // prints 24.6535
+	   }
+    
+</details>
+
 _Bad noise_ sine source is same but with <tt>freq=750</tt> (when JACK Fs is 48 kHz or multiple of it; check it with <tt>jack_samplerate</tt>).
 
 Quantizing noise sine source can be not only in form of C code as per [1], but also in form of Faust plugin (i use this for real calibrations):
