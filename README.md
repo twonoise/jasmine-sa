@@ -39,14 +39,15 @@ Other problem (for all type of SA, but mostly for FFT SA due to way higher amoun
 
 The correct approach is to use MAX function if we measure signals, and AVG function if we measure noise (please also check [1]:p.17). As there is no "perfect" display approach for FFT SA, operator should be familiar with run time display mode selection. It often combined with Tone-Noise measurement mode switch, mentioned above; we also do that in our code.
 
-Do not wonder if you can't find peaks you expect: it's probably Noise measurement (AVG) mode, when peaks will be reduced or lost. Opposite for that, Signal measurement (MAX) mode guarantees that peaks will be visible, and their amplitudes will be "correct" (correct if not short bursts/fast changes, see above). Btw, bursts are have way more chances to be catched with FFT SA, due to it "sees" all points in parallel, while real SA is sequental.
+Do not wonder if you can't find peaks you expect: it's probably Noise measurement (AVG) mode, when peaks will be reduced or lost. Opposite for that, Tone measurement (MAX) mode guarantees that peaks will be visible, and their amplitudes will be "correct" (correct if not short bursts/fast changes, see above). Btw, bursts are have way more chances to be catched with FFT SA, due to it "sees" all points in parallel, while real SA is sequental.
 
 Important property of our FFT SA is X axis (horizontal) zoom, or span, is wide range. As it gives high frequency resolution, it requires way larger FFT transform sizes than usual; note that such input data collection takes some time. If we "zoom-in" (reduce span) for more than 1 resulting FFT point per X axis pixel, our measurement cursor (Marker) becomes exact frequency and amplitude (power), and there will be no MAX or AVG or other altering of results, except window noise floor de-embedding if we have Noise (AVG) measurement mode. Note that we have dynamic FFT size for such a wide range of spans, but max size still can be given using command line (depends of CPU).
 
 Some other controls
 -------------------
 
-_Video bandwidth_, or **VBW**, can be limited for some cases like stable noise floor measure. First, we setup all things (frequency, etc) and see if we have expected picture; then, we limit VBW to filter it, and wait a lot more for stable picture. There are two types of VBW limiters. For real SA, it is often multi-point averaging (imagine an LPF at CRT ray Y deflection input). For FFT SA, there is also independent (per-point) filter often used; they also can be combined. We use only per-point one in our code yet. Note that VBW is CRT trace run time thing, it will not used when Stopped state.
+_Video bandwidth_, or **VBW**, can be limited for some cases like stable noise floor measure. First, we setup all things (frequency, etc) and see if we have expected picture; then, we limit VBW to filter it, and wait a lot more for stable picture. There are two types of VBW limiters. For real SA, it is often multi-point averaging (imagine an LPF at CRT ray Y deflection input). For FFT SA, there is also independent (per-point) filter often used; they also can be combined. We use only per-point one in our code yet. Note that VBW is CRT trace run time thing, it will not used when Stopped state. <br>
+By either pressing key twice, or, going with `+`, `-` control to above VBW maximum, we got **Max hold** mode. Note that, to measure with markers on it, we'll need to have _Tone (MAX)_ but not _Noise (AVG)_ measurement mode.
 
 _Y scale_ can be shifted up and down, and scale can be selected to be **dB re:voltage**, or **dB re:power**. Most baseband VU meters, like for speech or music, are use voltage, so we have it as default. dBPwr stretch Y scale two times, and also can be used to for more precise visual measurements.
 
@@ -70,11 +71,11 @@ Control
 
 Code
 ----
-Our C code is intended to be modified by operator and also asts as part of documentation, so it made as simple and clean as i can. Please add your own windowing functions, etc.
+Our C code is intended to be modified by operator and also asts as part of documentation, so i've made it as simple and clean as i can. Please add your own windowing functions, etc.
 
 ENOB MEASUREMENT
 ----------------
-We have special -e key to show _effecive number of bits_ (**ENOB**) of input signal. It show some labels on right Y scale. It also switch default measure mode to AVG (noise) for all channels. ENOB should be measured with all care of noise measurement. Extra calibrated noise sources can be feed to extra channels to check if ENOB scale is correct.
+We have special `-e` key to show _effecive number of bits_ (**ENOB**) of input signal. It show some labels on right Y scale. It also switch default measure mode to AVG (noise) for all channels. ENOB should be measured with all care of noise measurement. Extra calibrated noise sources can be feed to extra channels to check if ENOB scale is correct.
 
 Note that ENOB defined like SINAD with one tone with (near-)unity (max) amplitude. ENOB is not just silence input noise of ADC: it will be worse than that, and it shows why just input noise floor measurement is way less useful than ENOB (which is "real" noise). Tip: Use stats in our SA to see if our ADC samples are near unity, but never overloaded.
 
