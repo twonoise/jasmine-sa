@@ -113,8 +113,8 @@ l lx.
 \fBREADME.md   \fR  Instruction manual
 .TE
 
-.SH COMPILE example
-gcc -Wshadow -Wall -g -O3 -mavx2 -ffast-math -fopt-info-vec-optimized -march=native -lm -ljack -lX11 -lXrender -lXss -lGL -lfftw3_threads -lfftw3 -o jasmine-sa ./jasmine-sa.c
+.SH COMPILE example (add -fopt-info-vec-optimized for some SIMD info)
+gcc ./jasmine-sa.c -Wshadow -Wall -g -O3 -ffast-math -march=native -lm -lbsd -ljack -lX11 -lXrender -lXss -lGL -lfftw3_threads -lfftw3 -o jasmine-sa
 
 .SH DEBUG example
 gcc -ggdb3 -Wall -lm -ljack -lX11 -lXrender -lXss -lGL -lfftw3_threads -lfftw3 -o jasmine-sa ./jasmine-sa.c && echo -e '{\\n1\\nMemcheck:Leak\\n...\\nsrc:dl-open.c:874\\n}\\n{\\n2\\nMemcheck:Leak\\n...\\nsrc:dl-init.c:121\\n}\\n' > /tmp/s && valgrind --leak-check=full --show-leak-kinds=all --suppressions=/tmp/s ./jasmine-sa -k 16 system:capture_1 -e -O -M 0 -A 1 -o 0
