@@ -117,7 +117,7 @@ l lx.
 gcc ./jasmine-sa.c -Wshadow -Wall -g -O3 -ffast-math -march=native -lm -lbsd -ljack -lX11 -lXrender -lXss -lGL -lfftw3_threads -lfftw3 -o jasmine-sa
 
 .SH DEBUG example
-gcc -ggdb3 -Wall -lm -ljack -lX11 -lXrender -lXss -lGL -lfftw3_threads -lfftw3 -o jasmine-sa ./jasmine-sa.c && echo -e '{\\n1\\nMemcheck:Leak\\n...\\nsrc:dl-open.c:874\\n}\\n{\\n2\\nMemcheck:Leak\\n...\\nsrc:dl-init.c:121\\n}\\n' > /tmp/s && valgrind --leak-check=full --show-leak-kinds=all --suppressions=/tmp/s ./jasmine-sa -k 16 system:capture_1 -e -O -M 0 -A 1 -o 0
+gcc ./jasmine-sa.c -ggdb3 -Wall -lm -ljack -lX11 -lXrender -lXss -lGL -lfftw3_threads -lfftw3 -o jasmine-sa && echo -e '{\\n1\\nMemcheck:Leak\\n...\\nsrc:dl-open.c:874\\n}\\n{\\n2\\nMemcheck:Leak\\n...\\nsrc:dl-init.c:121\\n}\\n' > /tmp/s && valgrind --leak-check=full --show-leak-kinds=all --suppressions=/tmp/s ./jasmine-sa -k 16 system:capture_1 -e -O -M 0 -A 1 -o 0
 
 .SH TODO
 OpenGL replots should be better matched with XFlush(). Work \fBin progress!\fR
