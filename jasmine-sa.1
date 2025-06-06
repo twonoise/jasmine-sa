@@ -113,11 +113,24 @@ l lx.
 \fBREADME.md   \fR  Instruction manual
 .TE
 
-.SH COMPILE example (add -fopt-info-vec-optimized for some SIMD info)
+.SH COMPILE example
+
+.B * Pre-requisites for Debian:
+
+sudo apt install jackd libjack-dev libbsd-dev libfftw3-dev libx11-dev libxrender-dev libxss-dev libgl-dev libglx-dev
+
+.B * Pre-requisites for Archlinux:
+
+Have regular system with some JACK, x11 and openGL apps.
+
+.B * Compile
+(add \fI-fopt-info-vec-optimized\fR for some SIMD info)
+
 gcc ./jasmine-sa.c -Wshadow -Wall -g -O3 -ffast-math -march=native -lm -lbsd -ljack -lX11 -lXrender -lXss -lGL -lfftw3_threads -lfftw3 -o jasmine-sa
 
 .SH DEBUG example
-gcc ./jasmine-sa.c -ggdb3 -Wall -lm -ljack -lX11 -lXrender -lXss -lGL -lfftw3_threads -lfftw3 -o jasmine-sa && echo -e '{\\n1\\nMemcheck:Leak\\n...\\nsrc:dl-open.c:874\\n}\\n{\\n2\\nMemcheck:Leak\\n...\\nsrc:dl-init.c:121\\n}\\n' > /tmp/s && valgrind --leak-check=full --show-leak-kinds=all --suppressions=/tmp/s ./jasmine-sa -k 16 system:capture_1 -e -O -M 0 -A 1 -o 0
+
+gcc ./jasmine-sa.c -ggdb3 -Wall -lm -lbsd -ljack -lX11 -lXrender -lXss -lGL -lfftw3_threads -lfftw3 -o jasmine-sa && echo -e '{\\n1\\nMemcheck:Leak\\n...\\nsrc:dl-open.c:874\\n}\\n{\\n2\\nMemcheck:Leak\\n...\\nsrc:dl-init.c:121\\n}\\n' > /tmp/s && valgrind --leak-check=full --show-leak-kinds=all --suppressions=/tmp/s ./jasmine-sa -k 16 system:capture_1 -e -O -M 0 -A 1 -o 0
 
 .SH TODO
 OpenGL replots should be better matched with XFlush(). Work \fBin progress!\fR
