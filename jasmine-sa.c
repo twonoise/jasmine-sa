@@ -15,6 +15,7 @@
 #include <errno.h>
 
 #include <math.h>
+#include <bsd/bsd.h> // strlcat()
 #include "sys/param.h" // MIN(), MAX()
 
 #include <fftw3.h>
@@ -603,16 +604,16 @@ void newPlot()
   plotSetColors(3, 0);
 
   if (amptOverload >= 0)
-    plotStr ("Level Overload ch.%d", amptOverload);
+    plotStr("Level Overload ch.%d", amptOverload);
   else if (amptMax >= 0)
-    plotStr ("Level Max ch.%d", amptMax);
+    plotStr("Level Max ch.%d", amptMax);
   else if (amptZero >= 0)
-    plotStr ("Zero Input ch.%d", amptZero);
+    plotStr("Zero Input ch.%d", amptZero);
 
   amptZero = amptMax = amptOverload = -1;
 
   if (lowCpu)
-    plotStr ("Low CPU.");
+    plotStr("Low CPU.");
 
   if ((! stopped) && (stats)) {
     plotGotoXY(DX + xSize - 6, DY + 8);
@@ -2068,7 +2069,7 @@ void initOpengl(void)
   int visualData[] = {
       GLX_RENDER_TYPE, GLX_RGBA_BIT,
       GLX_DRAWABLE_TYPE, GLX_WINDOW_BIT,
-      // GLX_X_VISUAL_TYPE, GLX_TRUE_COLOR,
+      GLX_X_VISUAL_TYPE, GLX_TRUE_COLOR,
       GLX_DOUBLEBUFFER, True,
       GLX_RED_SIZE, 8,
       GLX_GREEN_SIZE, 8,
@@ -2375,7 +2376,7 @@ int main(int argc, char *argv[])
   if (windowBits & 8)
     XScreenSaverSuspend (dpy, 1);
 
-  DBG(F, "Window %dx%dx%dbpp created.", winW, winH, wa.depth);
+  DBG(X, "Window %dx%dx%dbpp created.", winW, winH, wa.depth);
 
 
 // JACK Part 2: Now we know that GUI setup, which takes some time, is done.
