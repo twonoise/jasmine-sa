@@ -12,7 +12,7 @@ _Note_: Mouse still can be used for markers (added per request).
 * Suitable for both small and large screens.
 * Highly optimized for CPU usage.
 * Background transparency for compare two spectrogram windows, or compare live spectrogram with saved picture used as substrate.
-* Uses only X11 internal font guaranteed to be available, ASCII only, gives uniform look and metrics everywhere. Pixel-precise and predictable, allows sharp look for any screens & LED panels.
+* Uses only X11 internal font guaranteed to be available, ASCII only, gives uniform look and metrics everywhere. Pixel-precise and predictable, allows sharp look for any screens & LED panels, papers and printed books.
 * Optional OpenGL, include both MSAA and Alpha transparency (_Testing_).
 * Brightness (luma) inversion option, HSL color model based.
 * Per-channel FFT windows, runtime selected.
@@ -145,22 +145,51 @@ then test it:
 
 We then can start our SA and see noise floor of real i/o and other things above 192 kS/s, which is typically impossible, and while upper half can't show us new tones, it can show how resampler and codec filters things; it also prepare us to have more than 192k i/o, we know it will work and displayed as expected, and we can estimate if we have enough CPU horsepower for that. But most good news that our "radio" DSPs (w/radio mixers... etc), inside of i/o boundary, will be plotted exactly as should.
 
+BUILD
+-----
+Pre-requisites for **Debian**:
+
+
+    sudo apt install jackd libjack-dev libbsd-dev libfftw3-dev libx11-dev libxrender-dev libxss-dev libgl-dev libglx-dev
+  
+
+Pre-requisites for **Archlinux**:
+
+Have regular system with some JACK, x11 and openGL apps.
+
+Compile:
+(add `-fopt-info-vec-optimized` for some SIMD info)
+
+
+    gcc ./jasmine-sa.c -Wshadow -Wall -g -O3 -ffast-math -march=native -lm -lbsd -ljack -lX11 -lXrender -lXss -lGL -lfftw3_threads -lfftw3 -o jasmine-sa
+
+
 EXAMPLES
 --------
 From as simple as (add `-e` for ENOB scale)...
 
     jasmine-sa system:capture_1 system:capture_2
     
-...To smooth transparent overlay bar on given screen place on your DAW, with tiny CPU usage (will also work as _JACK application_ with **Carla**)
+![jasmine-sa-1](https://github.com/user-attachments/assets/4216214d-b353-47db-ae77-129d0bc2e982)
+
+...To smooth transparent overlay bar on given screen place on your DAW, with tiny CPU usage (will also work as _JACK application_ with **Carla**)<br>
+_Tip_: See man page, or help using `-?`, to find these numbers meaning.
 
     jasmine-sa system:mic -O -A 1 -M 4 -o 0 -d -60,0,2,32 -h 0,2500,10,32 -p 4 -z -q CCEE -u 4 -x 100 -y 200 -b 31
+
+![jasmine-sa-2](https://github.com/user-attachments/assets/6c49736b-11a5-49a0-9da0-f0903bbf3b32)
+
+![jasmine-sa-3](https://github.com/user-attachments/assets/f42e1438-ba00-4472-bd11-84dfb9a6e99b)
+    
 
 Q & A
 -----
 
 _Where is log scale?_
 ---------------------
-We have log (dB) Y scale. As for X scale, it is linear only. While most audio(music)-centric analyzers are often have log X scale, this SA is not (only) musical, but more like scientific, these instrumensts often try to avoid log X scale, except phase noise measurements:
+We have log (dB) Y scale. As for X (frequency) scale, it is linear only. <br>
+Most audio(music)-centric analyzers are often have log X scale, which is good choice when we try to fit entire audible band onto one screen (i.e., there are no shift nor zoom-in for X scale) yet need it to be reasonably informative (19000 to 20000 Hz difference is not of same importance that 20 to 1020 Hz jump). <br>
+This SA is not (only) musical, but more like scientific, these instrumensts often try to avoid log X scale, except phase noise measurements:
 
 * There is no zero/negative frequencies allowed;
 * And, there is no measurements are possible, only estimations, as no Exact, Max, or Avg, display method for entire scale is useful.
@@ -207,6 +236,7 @@ CREDITS
 * [7] https://hal.science/hal-00414583/document
 * [8] https://people.ece.cornell.edu/land/PROJECTS/ReassignFFT/index.html
 * [9] https://github.com/x42/spectra.lv2
+* Thanks to all brave people from #lad, #opengl Libera chat, and others, who helps me all this time.
 * Credits for C code are shown at tail of C file.
 
 
