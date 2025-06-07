@@ -211,7 +211,8 @@ _I hate your pixels :-[_
 ---------------------
 There are **texels**.<br>
 And we have full openGL'ed GPU-driven antialiasing (MSAA). <br>
-But, yes, there is a bug for Intel GPU (or driver?) which blocks both **MSAA** and **Alpha** (**transparency**) at same time [5] [5a]. 
+But, yes, there is a "bug" for Intel GPU (or driver?) which blocks both **MSAA** and **Alpha** (**transparency**) at same time [5] [5a]. <br>
+P.S. _Added_: AMD GPU was tested. It (or driver?) also have this "bug".
 
 
 TESTING
@@ -230,7 +231,7 @@ CREDITS
 * [2] https://kluedo.ub.rptu.de/frontdoor/deliver/index/docId/4293/file/exact_fft_measurements.pdf
 * [3] https://www.gaussianwaves.com/2020/09/equivalent-noise-bandwidth-enbw-of-window-functions/
 * [4] Analog Devices MT-001.pdf
-* [5] https://stackoverflow.com/questions/79065474/transparent-background-and-msaa-at-same-time-for-opengl-window-on-x11
+* [5] https://stackoverflow.com/questions/79065474/transparent-background-and-msaa-at-same-time-for-opengl-window-on-x11 **Not work**, please see below a copy.
 * [5a] https://www.reddit.com/r/opengl/comments/1dhwgn1/alpha_to_coverage_and_intel_gpus/
 * [6] https://gitlab.freedesktop.org/mesa/mesa/-/issues/11275
 * [7] https://hal.science/hal-00414583/document
@@ -238,6 +239,74 @@ CREDITS
 * [9] https://github.com/x42/spectra.lv2
 * Thanks to all brave people from #lad, #opengl Libera chat, and others, who helps me all this time.
 * Credits for C code are shown at tail of C file.
+
+About [5]. This my question on SO was downvoted (aka deleted) very fast. Here is carbon copy.
+
+> https://stackoverflow.com/questions/79065474/transparent-background-and-msaa-at-same-time-for-opengl-window-on-x11
+> 
+> Transparent background and MSAA at same time for OpenGL window on X11
+> 
+> Asked 8 months ago
+> 
+> Modified 7 months ago
+> 
+> Viewed 119 times
+> 
+> -3
+> 
+> This post is hidden. It was automatically deleted 7 months ago by CommunityBot.
+> 
+> I need (A) transparent or semi-transparent background (i.e., not just transparent things in opaque window), like per [1], [2], [3]. At the same time, i need (B) MSAA (or GPU-accelerated smoothing of other type). There are varoius working examples for (B). The only working example for (A) for up-to-day OpenGL i found, is [4]; the reason why is quite hard to obtain transparent background with OpenGL & X11, author of [4] commented here [5] (2nd answer from top, expand comments and read important thing about "You definitely must use XRenderPictFormat...").
+> 
+> But now i need to join (A) & (B), with GPU only. No any example of this combo, and even no any info if it can/should be possible in theory. After a lot of coffees and segfaults, i am have partial understanding with it. Long story short, if we look at glxinfo | grep "32 tc" or so, it can be found that on Intel GPUs, regardless of if it is battery operated Celeron or hundered Watts CPU, there are no one Visual with MSAA: two right columns are zeroes. Or, when with MSAA (up to 16x), there is no one Visual with Alpha. And my massive trial-and-errors with C code, all are failed, confirms this (so far). My Frankenstein made of (A) and (B) does not want to alive.
+> 
+> Contrary to that, with (external) Nvidia GPU, even old one, there is no problem to have (A) & (B) at same time: you 1) see this via glxinfo, 2) just take code [4] and add/enable all the OpenGL eyecandies.
+> 
+> So it shows that (a) Intel GPU (or, (b) current Linux Intel driver/OpenGL) makes it impossible.
+> 
+> Q1: How can i confirm that with theoretical specs of hardware?
+> 
+> Q2: Is glxinfo output mostly driver-dependent?
+> 
+> So far, so good. Know that it is impossible (with Intel, which is my target, i am limited in physical size of setup) is better than not know it at all.
+> 
+> BUT.
+> 
+> My old Compiz easily overcomes this. On Intel GPU, using Window Opacity, i can get window transparency (or transparent window over another transparent window, or even over a video) with exact pixel-precision math, and at no any noticeable bit of extra CPU load. Compiz uses the OpenGL library as the interface to the graphics hardware, as per wiki.
+> 
+> Q3. How can it be possible?
+> 
+> Q4. Again, where are the specs for this patricular case?
+> 
+> This (Compiz's) type of transparency (C) can be fundamentally different from (A), because theoretically can be implemented without alpha channel, because all the pixels of one window are same "alpha" (semi-transparency) value (unlike my (A) case, where i need fully opaque elements). How i can in my OpenGL C code use this (C) per-window semi-transparency?
+> 
+> UPDATE.
+> 
+> For semi-transparency of type (C), i found, test for CPU efficiency, and use now in my release code, the X11 method described by author of [3] in comment #2 at [3]:
+> 
+>     uint32_t cardinal_alpha = (uint32_t) (0.5/transpareny/ * (uint32_t)-1) ;
+>     XChangeProperty(display, win,
+>     XInternAtom(display, "_NET_WM_WINDOW_OPACITY", 0),
+>     XA_CARDINAL, 32, PropModeReplace, (uint8_t*) &cardinal_alpha,1) ;
+> 
+> Thanks.
+> 
+> Arch Linux, 6.11.1-arch1-1, OpenGL ES 3.2 Mesa 24.2.3-arch1.1, OpenGL ES GLSL ES 3.20
+> 
+> OpenGL renderer string: Mesa Intel(R) UHD Graphics 630 (CFL GT2) (along other Intels)
+> 
+> All test setups are use fresh software, except Compiz, it is stable 0.8.18.
+> 
+> [1] [How to make an OpenGL rendering context with transparent background?](https://stackoverflow.com/questions/4052940)
+> 
+> [2] [Setting transparent background color in OpenGL doesn't work](https://stackoverflow.com/questions/48675484)
+> 
+> [3] https://gist.github.com/je-so/903479
+> 
+> [4]
+> https://github.com/datenwolf/codesamples/blob/master/samples/OpenGL/x11argb_opengl/x11argb_opengl.c
+> 
+> [5] https://stackoverflow.com/a/9215724
 
 
 LICENSE
