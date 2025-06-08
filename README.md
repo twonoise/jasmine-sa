@@ -205,6 +205,8 @@ _How about inter-bin interpolation?_
 ------------------------------------
 I can't find or estimate noise specs of these Time-Frequency Reassigned Spectrogram transforms [7] [8]. Without that, we can't make useful measurements. Btw, there are other SA where it is implemented, like x42 [9].
 
+If you need more frequency resolution than ~ 0.2 Hz/point (which is max for default max FFT size and 96 kHz Fs), you may increase max FFT size (depends on CPU).
+
 _Offline or file support?_
 ------------------------
 There is no, currently.
