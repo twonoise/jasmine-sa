@@ -149,23 +149,28 @@ BUILD
 -----
 Pre-requisites for **Debian**:
 
-
     sudo apt install jackd libjack-dev libbsd-dev libfftw3-dev libx11-dev libxrender-dev libxss-dev libgl-dev libglx-dev
-  
 
 Pre-requisites for **Archlinux**:
 
 Have regular system with some JACK, x11 and openGL apps.
 
-Compile:
-(add `-fopt-info-vec-optimized` for some SIMD info)
+Pre-requisites for **Slackware**:
 
+Add `-pthread` key.
+
+**Compile**:
+(_add_ `-fopt-info-vec-optimized` _key for some SIMD info_)
 
     gcc ./jasmine-sa.c -Wshadow -Wall -g -O3 -ffast-math -march=native -lm -lbsd -ljack -lX11 -lXrender -lXss -lGL -lfftw3_threads -lfftw3 -o jasmine-sa
 
 
 EXAMPLES
 --------
+> _New users_: We assume that JACK sound engine (`jackd`) started already, and you know how to operate with it. If not, it will be started automatically for you, but sample rate can be low.
+
+<br>
+
 From as simple as (add `-e` for ENOB scale)...
 
     jasmine-sa system:capture_1 system:capture_2
