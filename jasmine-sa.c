@@ -73,12 +73,13 @@ static void usage(const char *name)
   "                            grid cell size (px). Default: -100,0,10,50\n"
   " -D, --db-pwr=...         same as -d, but with dB Power units\n"
   " -p, --phosphor=N         auto memory levels, 1..16. Default: 0\n"
-  " -u, --subgrid-size=N     sub-grid pitch, px. Default: 5\n"
+  " -u, --subgrid-size=N     sub-grid pitch, px. Default: 5,\n"
+  "                            zero for no grid\n"
   " -e, --enob               show ENOB scale on right Y axis,\n"
   "                            and set Noise (Avg) mode for all\n"
-  "                            channels as default.\n"
+  "                            channels as default\n"
   " -z, --show-zero          show zero input as minimal value\n"
-  "                            (-327.67 dB) plot, rather than hide it.\n"
+  "                            (-327.67 dB) plot, rather than hide it\n"
   " -c, --colors=UINT64      up to 8 hex colors as hue values,\n"
   "                            seven Font colors and one Grid color;\n"
   "                            0 is special value: Gray;\n"
@@ -111,6 +112,8 @@ static void usage(const char *name)
   " -M, --msaa=N             use MSAA, 0..4. Default: 0\n"
   " -A, --alpha=N            use Alpha transparency, 0 or 1 (default),\n"
   "                            see also -o\n"
+  " -S, --opengl-scale=N     openGL-only scale %%, 100 (default)..400\n"
+  " -F, --opengl-font=N      openGL-only font scale %%, 100 (default)..400\n"
   " -x, --x-pos=N            position on screen, px\n"
   " -y, --y-pos=N            position on screen, px\n"
   " -w, --rev-wheel          reverse mouse wheel\n"
@@ -119,7 +122,7 @@ static void usage(const char *name)
 }
 
 static const char *shortopts =
-  "k:r:j:h:d:D:p:u:ezc:q:l:s:fm:g:o:b:OM:A:x:y:wv:";
+  "k:r:j:h:d:D:p:u:ezc:q:l:s:fm:g:o:b:OM:A:S:F:x:y:wv:";
 
 static const struct option longopts[] = {
   {"fftk-max",     1, 0, 'k'},
@@ -144,6 +147,8 @@ static const struct option longopts[] = {
   {"opengl",       0, 0, 'O'},
   {"msaa",         1, 0, 'M'},
   {"alpha",        1, 0, 'A'},
+  {"opengl-scale", 1, 0, 'S'},
+  {"opengl-font",  1, 0, 'F'},
   {"x-pos",        1, 0, 'x'},
   {"y-pos",        1, 0, 'y'},
   {"rev-wheel",    0, 0, 'w'},
@@ -172,7 +177,6 @@ int subGridSize = 5;
 
 int crtRayStyle = 0;  // 0 = Auto
 int optRayFade = 0;
-int gpuComp = 0;
 int memorySlots = MAXMEM - 1;
 int defPhospor = 0;
 
@@ -190,6 +194,13 @@ int jobs = 1;
 int optOpengl = 0;
 int optAlpha = 1;
 int optMsaa = 0;
+
+int openglGpuComp = 0; // %
+float   glGpuComp = 0.0;
+int openglScale = 100; // %
+float   glScale = 1.0;
+int openglFont = 100;  // %
+float   glFont = 1.0;
 
 // Geometry
 #define MAXXSIZE 2048
@@ -468,6 +479,8 @@ void XFlushArea(int a, int b, int c, int d)
 }
 
 // Font engine, should be used with bitmap 'fixed' 6x13 guaranteed to be available and fastest possible.
+#define glyphW 6
+#define glyphH 13
 int xx = 0, yy = 0;
 int fgcolor = 1, bgcolor = 0;
 int vtab = 14;
@@ -498,13 +511,12 @@ void plotStr(const char *fmt, ...)
   va_end(args);
 
   int textWidth = 0;
-  int glyphHeight = 13; // 'fixed' is 6x13
   int centeringOffset = 0;
 
   if ((yy < 0) || (!strlen(buffer)))
     return;
 
-  textWidth = strlen(buffer) * 6; // 'fixed' is 6x13
+  textWidth = strlen(buffer) * glyphW;
 
   if (bgcolor == -2)
     centeringOffset = - textWidth / 2;
@@ -515,16 +527,16 @@ void plotStr(const char *fmt, ...)
 
   if (bgcolor >= 0)
     // Opaque background
-    XDrawImageString(dpy, pm, color, xx + centeringOffset, yy + glyphHeight - 2, buffer, strlen(buffer));
+    XDrawImageString(dpy, pm, color, xx + centeringOffset, yy + glyphH - 2, buffer, strlen(buffer));
   else
   {
     // No background
-    XDrawString(dpy, pm, color, xx + centeringOffset, yy + glyphHeight - 2, buffer, strlen(buffer));
+    XDrawString(dpy, pm, color, xx + centeringOffset, yy + glyphH - 2, buffer, strlen(buffer));
   }
 
   // These special colors causes immediate update.
   if (((fgcolor == 5) || (fgcolor == 6)) && (! optOpengl))
-    XFlushArea(xx + centeringOffset, yy, textWidth, glyphHeight);
+    XFlushArea(xx + centeringOffset, yy, textWidth, glyphH);
 
   yy = yy + vtab;
   if (yy > DY + ySize)
@@ -585,20 +597,23 @@ void newPlot()
   if (phosphor < MAXPHOSPHOR)
     XFillRectangle(dpy, pm, bgColor, PLOTAREA);
 
-  nPoints = 0;
-
-  for (int j = 0; j <= yGrids; j++)
+  if (subGridSize > 1)
   {
-    int step = (j == (yDbMax / yDbStep)) ? 2 : subGridSize;
-    for (int i = 0; i <= xSize / step; i++)
-      ADDPOINT(i * step, j * yGridSize);
+    nPoints = 0;
+
+    for (int j = 0; j <= yGrids; j++)
+    {
+      int step = (j == (yDbMax / yDbStep)) ? 2 : subGridSize;
+      for (int i = 0; i <= xSize / step; i++)
+        ADDPOINT(i * step, j * yGridSize);
+    }
+
+    for (int j = 0; j <= xGrids; (spanHz == 0) ? j = j + xGrids : j++)
+      for (int i = 0; i < ySize / subGridSize; i++)
+        ADDPOINT(j * xGridSize, i * subGridSize);
+
+    XDrawPoints(dpy, pm, fontColor[0], points, nPoints, CoordModeOrigin);
   }
-
-  for (int j = 0; j <= xGrids; (spanHz == 0) ? j = j + xGrids : j++)
-    for (int i = 0; i < ySize / subGridSize; i++)
-      ADDPOINT(j * xGridSize, i * subGridSize);
-
-  XDrawPoints(dpy, pm, fontColor[0], points, nPoints, CoordModeOrigin);
 
   plotGotoXY(DX + 6, DY + 20);
   plotSetColors(3, 0);
@@ -824,7 +839,7 @@ void plotOneChannel(int ch)
 
       if (lineThick)
       {
-        glLineWidth(MAX(lineThick, 1) - (float)gpuComp / 100.0);
+        glLineWidth((MAX(lineThick, 1) - glGpuComp) * glFont);
         if (optRayFade)
         {
           // Effect of different brightness of long and short lines, as on real CRT.
@@ -854,7 +869,7 @@ void plotOneChannel(int ch)
 
       if (pointThick)
       {
-        glPointSize(MAX(pointThick + 1.5, 1) - (float)gpuComp / 100.0);
+        glPointSize((MAX(pointThick + 1.5, 1) - glGpuComp) * glFont);
         glVertexPointer(2, GL_SHORT, 0, &points);
         glDrawArrays(GL_POINTS, 0, nPoints);
       }
@@ -913,9 +928,6 @@ void plotMkr(int x, int y, int ch, int isDelta, int value, float freq)
     if (! xim)
       ERR(X, "XGetImage() failed.");
 
-    glLoadIdentity();
-    glOrtho(0, winW, 0, winH, -1.0, 1.0);
-
     // OpenGL does not have any color keying (auto Alpha based on some color threshold).     We emulate Alpha keying using white "key" color, then do math based on it twice: for black letters outline, then for colored letters. It works good here, and we even do not need to know if we have Alpha (24 or 32 bit), except correct rectangle pre-fill above.
     // Opaque black for text outline.
     glBlendColor(0, 0, 0, 1.0);
@@ -938,7 +950,11 @@ void plotMkr(int x, int y, int ch, int isDelta, int value, float freq)
         glBlendColor(BYTE(lineColorAbgr[ch * GRADIENTS], 0) / 255.0, BYTE(lineColorAbgr[ch * GRADIENTS], 1) / 255.0, BYTE(lineColorAbgr[ch * GRADIENTS], 2) / 255.0, 1.0);
 
       // [20] Unlike glRasterPos2i(), this one is faster and allows negative x, y.
-      glWindowPos2i(DX + x + dx - mkrW / 2 - 1, winH - (DY + y + dy - mkrH / 2 - 1));
+      glPixelZoom(glFont, - glFont); // Turn it upside down.
+      // glWindowPos2i((DX + x + dx - mkrW / 2 - 1) * glScale, winH - (DY + y + dy - mkrH / 2 - 1) * glScale);
+      glWindowPos2i((DX + x) * glScale + (dx - mkrW / 2 - 1) * glFont,
+            winH - ((DY + y) * glScale + (dy - mkrH / 2 - 1) * glFont));
+
       glDrawPixels(mkrW, mkrH, GL_BGRA, GL_UNSIGNED_BYTE, (void*)(&(xim->data[0])));
     }
     else // Normal X11 transparent draw.
@@ -1492,7 +1508,7 @@ void processMessages()
         // Mouse wheel gives 4 or 5, good for keyboard mimic: X11 keyboard codes are starts from 8.
         processKeyboard(e.xbutton.button);
       else
-        processMouse(e.xbutton.x - DX, e.xbutton.y - DY, (e.xbutton.button != Button1));
+        processMouse((int)(e.xbutton.x / glScale - DX), (int)(e.xbutton.y / glScale - DY), (e.xbutton.button != Button1));
     }
   }
 }
@@ -1827,24 +1843,26 @@ disk_thread (void *arg)
       {
         newPlot();
 
-        if (optOpengl) {
+        if (optOpengl)
+        {
           XImage *xim;
           xim = XGetImage(dpy, pm, 0, 0, winW, winH, AllPlanes, ZPixmap);
           if (! xim)
               ERR(X, "XGetImage() failed.");
 
+          // Phase 1. Plot screen base (grid, legend...)
           glLoadIdentity();
           glOrtho(0, winW, 0, winH, -1.0, 1.0);
+          glPixelZoom(glScale, - glScale); // Turn it upside down.
           glWindowPos2i(0, winH);
-          glPixelZoom(1.0, -1.0); // Turn it upside down.
           glBlendFunc(GL_ONE, GL_ZERO); // Disable blending.
           glDrawPixels(winW, winH, GL_BGRA, GL_UNSIGNED_BYTE, (void*)(&(xim->data[0])) );
           XDestroyImage(xim);
 
-          // We have special 0.5 px shifts to match openGL lines with X11.
-          // Also we turn it upside down.
+          // Phase 2. Plot spectrograms
+          // We have special 0.5 px shifts, and turn it upside down, to exact match openGL lines with X11.
           glLoadIdentity();
-          glOrtho(0 - 0.5, winW - 0.5, winH - 0.5, 0 - 0.5, -1.0, 1.0);
+          glOrtho(0 - 0.5, winW / glScale - 0.5, winH / glScale - 0.5, 0 - 0.5, -1.0, 1.0);
           // glEnable(GL_COLOR_LOGIC_OP);
           // glLogicOp(GL_OR); // It also works like GXor.
           glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_COLOR); // Like GXor or better.
@@ -1853,7 +1871,13 @@ disk_thread (void *arg)
         for (int ch = 0; ch < channels; ch++)
           plotOneChannel(ch);
 
-        // Draw markers on top of all.
+        if (optOpengl)
+        {
+          // Phase 3. Plot markers on top of all.
+          glLoadIdentity();
+          glOrtho(0, winW, 0, winH, -1.0, 1.0);
+        }
+
         plotOneChannelMkr(mkrCh[0], 0);
         plotOneChannelMkr(mkrCh[1], 1);
 
@@ -2171,7 +2195,7 @@ int main(int argc, char *argv[])
       case 'r':     maxRoll = FIT(ul, 1, 256);  break;
       case 'j':        jobs = FIT(ul, 1, 4);    break;
       case 'p':  defPhospor = FIT(ul, 0, 16);   break;
-      case 'u': subGridSize = FIT(ul, 2, 10);   break;
+      case 'u': subGridSize = FIT(ul, 0, 10);   break;
       case 's': crtRayStyle = FIT(ul, 0, 7);    break;
       case 'v':     verbose = FIT(ul, 0, 4);    break;
       case 'x':     winXPos = FIT(ul, 0, 4096); break;
@@ -2181,10 +2205,12 @@ int main(int argc, char *argv[])
       case 'l':     satLuma = strtoull(optarg, NULL, 16); break;
       case 'm': memorySlots = FIT(ul, 0, MAXMEM - 1);     break;
       case 'o':     opacity = FIT(ul, 0, 100);  break;
-      case 'g':     gpuComp = FIT(ul, 0, 100);  break;
+      case 'g':     openglGpuComp = FIT(ul, 0, 100);  break;
       case 'b':  windowBits = FIT(ul, 0, 255);  break;
       case 'M':     optMsaa = FIT(ul, 0, 4);    break;
       case 'A':    optAlpha = FIT(ul, 0, 1);    break;
+      case 'S': openglScale = FIT(ul, 100, 400); break;
+      case 'F':  openglFont = FIT(ul, 100, 400); break;
       case 'O':   optOpengl = 1; break;
       case 'f':  optRayFade = 1; break;
       case 'e': optShowEnob = 1; break;
@@ -2317,6 +2343,19 @@ int main(int argc, char *argv[])
   if (! (windowBits & (16 + 32)))
     winW = winW + LEGENDWIDTH - 2;
   winH = DY + ySize + DX + !!(windowBits & 16); // 32
+
+  if (optOpengl)
+  {
+    glGpuComp = openglGpuComp / 100.0;
+    glScale = openglScale / 100.0;
+    glFont = openglFont / 100.0;
+
+    if ((glScale != 1.0) && (glFont == 1.0))
+      glFont = glScale;
+
+    winW = winW * glScale;
+    winH = winH * glScale;
+  }
 
   win = XCreateWindow(dpy, DefaultRootWindow(dpy), winXPos, winYPos, winW, winH, 0, visual.depth, InputOutput, visual.visual, attr_mask, &attr);
   if (!win)
