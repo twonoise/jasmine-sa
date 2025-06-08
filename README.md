@@ -86,6 +86,9 @@ Important for noise measurement. Please read throughly [1]:p.22. Quantizing nois
 1.  It is stop to reduce when FFT size increase (RBW decrease) and MAX measure method.
 2.  It is reduces by 6 dB per FFT size 2x increase step, while should by 3 dB, when AVG measure method.
 
+Calibration sources
+-------------------
+
 _Perfect noise_ sine source with ~25 ENOB. The problem with it is exact ENOB of it is not known: it is quantized by float samples (JACK is float), but not by exact bit limiter:
 
     gst-launch-1.0 audiotestsrc freq=749.999 volume=1.0 ! audio/x-raw,channels=2 ! jackaudiosink
@@ -131,20 +134,6 @@ Quantizing noise sine source can be not only in form of C code as per [1], but a
     
 Note that, unlike direct-type ADC, most PC sound cards, as well as other not-so-expensive (sigma-delta) ADC, are have _noise shaping_ which push out noise from audible band to upper band, so it's worth to measure ENOB not only below 20 kHz (which is default band for our SA), but also for full band. Noise shaping can depend of sample rate.
 
-ABOVE 192 kS/s?
----------------
-JACK engine not only allows to go above 192 kS/s, but also does it at realtime, that means even if our ADC or DAC can't go so high, we still have complete and solid solution, with 1:N resampler at i/o. Inside the i/o borders to outer world (ADC & DAC), our lv2 plugins, as well as all other DSP, will work at this "radio" frequency, which allows to use "radio" math like IF-LO-RF mixers, etc, and samplerate will be auto decimated on i/o only. Note that JACK never altering our samples on road. This is best possible, defined, all-RT setup for precision science i see so far.
-
-Start JACK with **plug:hw:PCH** but not normal **hw:PCH**, like:
-
-    jackd -dalsa -dplug:hw:PCH -r384000 -p4096 -n3 -Xraw
-    
-then test it:
-
-    jack_samplerate
-
-We then can start our SA and see noise floor of real i/o and other things above 192 kS/s, which is typically impossible, and while upper half can't show us new tones, it can show how resampler and codec filters things; it also prepare us to have more than 192k i/o, we know it will work and displayed as expected, and we can estimate if we have enough CPU horsepower for that. But most good news that our "radio" DSPs (w/radio mixers... etc), inside of i/o boundary, will be plotted exactly as should.
-
 BUILD
 -----
 Pre-requisites for **Debian**:
@@ -185,7 +174,21 @@ _Tip_: See man page, or help using `-?`, to find these numbers meaning.
 ![jasmine-sa-2](https://github.com/user-attachments/assets/6c49736b-11a5-49a0-9da0-f0903bbf3b32)
 
 ![jasmine-sa-3](https://github.com/user-attachments/assets/f42e1438-ba00-4472-bd11-84dfb9a6e99b)
+  
+
+ABOVE 192 kS/s?
+---------------
+JACK engine not only allows to go above 192 kS/s, but also does it at realtime, that means even if our ADC or DAC can't go so high, we still have complete and solid solution, with 1:N resampler at i/o. Inside the i/o borders to outer world (ADC & DAC), our lv2 plugins, as well as all other DSP, will work at this "radio" frequency, which allows to use "radio" math like IF-LO-RF mixers, etc, and samplerate will be auto decimated on i/o only. Note that JACK never altering our samples on road. This is best possible, defined, all-RT setup for precision science i see so far.
+
+Start JACK with **plug:hw:PCH** but not normal **hw:PCH**, like:
+
+    jackd -dalsa -dplug:hw:PCH -r384000 -p4096 -n3 -Xraw
     
+then test it:
+
+    jack_samplerate
+
+We then can start our SA and see noise floor of real i/o and other things above 192 kS/s, which is typically impossible, and while upper half can't show us new tones, it can show how resampler and codec filters things; it also prepare us to have more than 192k i/o, we know it will work and displayed as expected, and we can estimate if we have enough CPU horsepower for that. But most good news that our "radio" DSPs (w/radio mixers... etc), inside of i/o boundary, will be plotted exactly as should.
 
 Q & A
 -----
