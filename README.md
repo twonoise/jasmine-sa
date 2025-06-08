@@ -68,7 +68,7 @@ We have it for _openGL only_. There is better if scale factor is integer (_N_ * 
 * One is well known, and acts like `QT_SCALING_FACTOR=N` (_we do not have Qt, so just an example_). It works as picture scaling, except that vector-based (scalable) elements of window are redrawn with full resolution. <br>
 _Note_ that in this case, we got nice picture, but do not increase "real" resolution (like X axis points quantity).
 * Font only scaling. Other elements are remaining under regular size options control. When operator scales both font and plot dimensions via its own controls, we get result looks similar to above, yet have benefit of increased real video resolution. <br>
-_Note_: Spectrogram lines and points width are tied to font scale.
+_Note_: Spectrogram lines and points width are also scaled with font scale (along with they have its own control).
 
 Control
 -------
