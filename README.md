@@ -62,6 +62,13 @@ Note that time is required for **z** to settle.
 
 Btw, z is not ENOB, while they can match exactly (like for ENOB calibration sources). Z can be less (deeper, or more in its abs value) than ENOB, like for input white noise of sound card, when z = -24 and ENOB ~13; but ENOB can't be better (more) than z in its abs value.
 
+Hi-DPI aka Window scaling
+-------------------------
+We have it for _openGL only_. There is better if scale factor is integer (_N_ * 100%). We have two options:
+* One is well known, and acts like QT_SCALING_FACTOR=N (we do not have Qt, so just an example). It works as picture scaling, except that vector-based (scalable) elements of window are redrawn with full resolution. <br>
+Note that in this case, we got nice picture, but do not increase "real" resolution (like X axis points quantity).
+* Font only scaling. Other elements are remaining under regular size options control. When operator scales both font and plot dimensions via its own controls, we get result looks similar to above, yet have benefit of increased real video resolution. 
+
 Control
 -------
 * _Keyboard_: Esc, F1...F10, alphanumeric, +, - (PgUp, PgDn) and Cursor keys; <br>
