@@ -127,7 +127,10 @@ _Bad noise_ sine source is same but with <tt>freq=750</tt> (when JACK Fs is 48 k
 
 Quantizing noise sine source can be not only in form of C code as per [1], but also in form of Faust plugin (i use this for real calibrations):
 
-> This may not work correctly [above 192 kS/s](https://github.com/twonoise/jasmine-sa/?tab=readme-ov-file#above-192-kss). Some tune-up of **Faust** may be need. To be displayed.
+> This may not work correctly [above 192 kS/s](https://github.com/twonoise/jasmine-sa/?tab=readme-ov-file#above-192-kss). Some tune-up of **Faust** may be need:
+> 
+>     sed -i 's/192000/384000/' /usr/share/faust/platform.lib
+>     sed -i 's/192000/384000/' /usr/share/faust/math.lib 
 
     //  See my `enobsrc.dsp`, here is math.
     //  Compile using: `faust2lv2 -double ./enobsrc.dsp`
