@@ -101,6 +101,8 @@ Calibration sources
 
 _Perfect noise_ sine source with ~25 ENOB. The problem with it is exact ENOB of it is not known: it is quantized by float samples (JACK is float), but not by exact bit limiter:
 
+> This command will work correctly even [above 192 kS/s](https://github.com/twonoise/jasmine-sa/?tab=readme-ov-file#above-192-kss).
+
     gst-launch-1.0 audiotestsrc freq=749.999 volume=1.0 ! audio/x-raw,channels=2 ! jackaudiosink
     
 The ENOB of 32-bit float obviously defined and should be well known, but no any paper about it. Trying to estimate it myself, gives value of 24.6535, which is differ from ~25 i get during calibrated measurements:
@@ -124,6 +126,8 @@ The ENOB of 32-bit float obviously defined and should be well known, but no any 
 _Bad noise_ sine source is same but with <tt>freq=750</tt> (when JACK Fs is 48 kHz or multiple of it; check it with <tt>jack_samplerate</tt>).
 
 Quantizing noise sine source can be not only in form of C code as per [1], but also in form of Faust plugin (i use this for real calibrations):
+
+> This may not work correctly [above 192 kS/s](https://github.com/twonoise/jasmine-sa/?tab=readme-ov-file#above-192-kss). Some tune-up of **Faust** may be need. To be displayed.
 
     //  See my `enobsrc.dsp`, here is math.
     //  Compile using: `faust2lv2 -double ./enobsrc.dsp`
