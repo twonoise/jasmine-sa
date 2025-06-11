@@ -195,7 +195,7 @@ _Tip_: See man page, or help using `-?`, to find these numbers meaning.
 
 ABOVE 192 kS/s?
 ---------------
-JACK engine not only allows to go above 192 kS/s, but also does it at realtime, that means even if our ADC or DAC can't go so high, we still have complete and solid solution, with 1:N resampler at i/o. Inside the i/o borders to outer world (ADC & DAC), our lv2 plugins, as well as all other DSP, will work at this "radio" frequency, which allows to use "radio" math like IF-LO-RF mixers, etc, and samplerate will be auto decimated on i/o only. Note that JACK never altering our samples on road. This is best possible, defined, all-RT setup for precision science i see so far.
+JACK engine not only allows to go above 192 kS/s, but also does it at realtime, that means even if our ADC or DAC can't go so high, we still have complete and solid solution, with 1:N resampler at i/o. Inside the i/o borders to outer world (ADC & DAC), our lv2 plugins, as well as all other DSP, will work at this "radio" frequency, which allows to use "radio" math like [IF-LO-RF mixers](https://github.com/twonoise/rfclipper), etc, and samplerate will be auto decimated on i/o only. Note that JACK never altering our samples on road. This is best possible, defined, all-RT setup for precision science i see so far.
 
 Start JACK with **plug:hw:PCH** but not normal **hw:PCH**, like:
 
