@@ -173,7 +173,7 @@ Add `-pthread` key.
 
 EXAMPLES
 --------
-> _New users_: We assume that JACK sound engine (`jackd`) started already, and you know how to operate with it. If not, it will be started automatically for you, but sample rate can be low.
+> _New users_: We assume that JACK sound engine (`jackd`) started already, and you know how to operate with it. If not, it will be started automatically for you, but sample rate can be low. _Tip_: try `qjackctl`.
 
 <br>
 
