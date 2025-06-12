@@ -221,6 +221,12 @@ This SA is not (only) musical, but more like scientific, these instrumensts ofte
     
 But feel free to implement log scale yourself: our code is _intended_ for user enhancements.
 
+_How do i move non-decorated window?_
+-------------------------------------
+When no caption nor border mode selected, _but_ no locked position mode, window is moveable as usual: 
+* either `Alt+Left mouse button drag` using any place inside of window;
+* or, Window menu (`Alt+Space`, or `Right click` on it on taskbar), then **Move**. I.e., this way it is possible without mouse.
+
 _How about inter-bin interpolation?_
 ------------------------------------
 I can't find or estimate noise specs of these Time-Frequency Reassigned Spectrogram transforms [7] [8]. Without that, we can't make useful measurements. Btw, there are other SA where it is implemented, like x42 [9].
