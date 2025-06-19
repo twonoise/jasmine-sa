@@ -245,7 +245,7 @@ _I hate your pixels :-[_
 There are **texels**.<br>
 And we have full openGL'ed GPU-driven antialiasing (MSAA). <br>
 But, yes, there is a "bug" for Intel GPU (or driver?) which blocks both **MSAA** and **Alpha** (**transparency**) at same time [5] [5a]. <br>
-P.S. _Added_: AMD GPU was tested. It (or driver?) also have this "bug".
+P.S. _Added_: AMD integrated GPU was tested. It (or driver?) also have this "bug". So, currently, both mainstream _integrated_ GPUs are affected.
 
 
 TESTING
