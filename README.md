@@ -74,10 +74,12 @@ _Note_: Spectrogram lines and points width are also scaled with font scale (alon
 
 Control
 -------
-* _Keyboard_: Esc, F1...F10, alphanumeric, +, - (PgUp, PgDn) and Cursor keys; <br>
-**h**, **k**, **m** for frequency units entry;<br>
-**x** for exit.
-* _Mouse_: Absolute (left) and Relative (right button) markers; wheel as keyboard +, -.
+* _Keyboard_: <br>
+ `Esc`, `F1`...`F10`, alphanumeric, `+`, `-` (`PgUp`, `PgDn`) and Cursor keys; <br>
+ `h`, `k`, `m` for frequency units entry;<br>
+ `x` for exit.
+* _Mouse_: <br>
+ Absolute (`left`) and Relative (`right` button) markers; `wheel` as keyboard `+`, `-`.
 
 Code
 ----
