@@ -183,7 +183,7 @@ From as simple as (add `-e` for ENOB scale)...
     
 ![jasmine-sa-1](https://github.com/user-attachments/assets/4216214d-b353-47db-ae77-129d0bc2e982)
 
-...To smooth transparent overlay bar on given screen place on your DAW, with tiny CPU usage (will also work as _JACK application_ with **Carla**)<br>
+...To smooth transparent overlay bar on given screen place on your DAW, with tiny CPU usage (will also work as _JACK application_ with **[Carla](https://github.com/twonoise/carla-patches)**)<br>
 _Tip_: See man page, or help using `-?`, to find these numbers meaning.
 
     jasmine-sa system:mic -O -A 1 -M 4 -o 0 -d -60,0,2,32 -h 0,2500,10,32 -p 4 -z -q CCEE -u 4 -x 100 -y 200 -b 31
