@@ -12,7 +12,7 @@ _Note_: Mouse still can be used for markers (added per request).
 * Suitable for both small and large screens.
 * Highly optimized for CPU usage.
 * Background transparency for compare two spectrogram windows, or compare live spectrogram with saved picture used as substrate.
-* Uses only X11 internal font guaranteed to be available, ASCII only, gives uniform look and metrics everywhere. Pixel-precise and predictable, allows sharp look for any screens & LED panels, papers and printed books.
+* Uses only X11 internal font guaranteed to be available, ASCII only, gives uniform look and metrics everywhere. Pixel-precise and predictable, allows sharp look for any screens & discrete LED panels, papers and printed books.
 * Optional OpenGL, include both MSAA and Alpha transparency (_Testing_).
 * Brightness (luma) inversion option, HSL color model based.
 * Per-channel FFT windows, runtime selected.
