@@ -235,6 +235,10 @@ I can't find or estimate noise specs of these Time-Frequency Reassigned Spectrog
 
 If you need more frequency resolution than ~ 0.2 Hz/point (which is max for default max FFT size and 96 kHz Fs), you may increase max FFT size (depends on CPU).
 
+_State save?_
+-------------
+We do not have it, and not planned. Rather, we have rich command line options set, with most if not all aspects highly configurable.
+
 _Offline or file support?_
 ------------------------
 There is no, currently.
