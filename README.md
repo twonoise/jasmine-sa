@@ -207,7 +207,7 @@ then test it:
 
     jack_samplerate
 
-We then can start our SA and see noise floor of real i/o and other things above 192 kS/s, which is typically impossible, and while upper half can't show us new tones, it can show how resampler and codec filters things; it also prepare us to have more than 192k i/o, we know it will work and displayed as expected, and we can estimate if we have enough CPU horsepower for that. But most good news that our ["radio" DSPs](https://github.com/twonoise/rfclipper/blob/main/rfclipper.dsp) (w/radio mixers... etc), inside of i/o boundary, will be plotted exactly as should.
+We then can start our SA and see noise floor of real i/o and other things above 192 kS/s, which is typically impossible, and while upper half can't show us new tones, it can show how resampler and codec filters things; it also prepare us to have more than 192k i/o, we know it will work and displayed as expected, and we can estimate if we have enough CPU horsepower for that. But most good news that our ["radio" DSPs](https://github.com/twonoise/rfclipper/blob/main/rfclipper.dsp) (w/radio mixers... etc), inside of i/o boundary, will be plotted [exactly as should](https://github.com/user-attachments/assets/b6a5c5b3-bd96-4283-9687-64532751188f).
 
 Q & A
 -----
