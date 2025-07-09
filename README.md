@@ -46,8 +46,13 @@ Important property of our FFT SA is X axis (horizontal) zoom, or span, is wide r
 Some other controls
 -------------------
 
-_Video bandwidth_, or **VBW**, can be limited for some cases like stable noise floor measure. First, we setup all things (frequency, etc) and see if we have expected picture; then, we limit VBW to filter it, and wait a lot more for stable picture. There are two types of VBW limiters. For real SA, it is often multi-point averaging (imagine an LPF at CRT ray Y deflection input). For FFT SA, there is also independent (per-point) filter often used; they also can be combined. We use only per-point one in our code yet. Note that VBW is CRT trace run time thing, it will not used when Stopped state. <br>
-By either pressing key twice, or, going with `+`, `-` control to above VBW maximum, we got **Max hold** mode. Note that, to measure with markers on it, we'll need to have _Tone (MAX)_ but not _Noise (AVG)_ measurement mode.
+_Video bandwidth_, or **VBW**, can be limited for some cases like stable noise floor measure. First, we setup all things (frequency, etc) and see if we have expected picture; then, we limit VBW to filter it, and wait a lot more for stable picture. There are two types of VBW limiters. For real SA, it is often multi-point averaging (imagine an LPF at CRT ray Y deflection input). For FFT SA, there is also independent (per-point) filter often used; they also can be combined. We use only per-point one in our code yet. 
+> [!Note]
+> VBW is CRT trace run time thing, it will not used when Stopped state.
+
+By either pressing key twice, or, going with `+`, `-` control to above VBW maximum, we got **Max hold** mode. 
+> [!Note]
+> To measure with markers on **Max hold**, we'll need to have _Tone (MAX)_ but not _Noise (AVG)_ measurement mode.
 
 _Y scale_ can be shifted up and down, and scale can be selected to be **dB re:voltage**, or **dB re:power**. Most baseband VU meters, like for speech or music, are use voltage, so we have it as default. dBPwr stretch Y scale two times, and also can be used to for more precise visual measurements.
 
@@ -57,8 +62,9 @@ We have auto-selected _roll_ (_sliding window_) which allows to FFT and plot som
 
 We have per-channel _statistics_ of input signal(s). It show min and max values with auto reset on each screen. It also have **z** value, which i define as <tt>log2(abs(minNZ)) - 1</tt>, where _minNZ_ is minimal (most close to zero) but non-zero value so far, and _1_ is extra sign bit. I define its dimension unit as bits, and it, like ENOB, can be non-integer. **z** statistics are resets only manually (Esc hit, or Instrument reset). **z** value gives an idea how fine-grained incoming samples are.
  * _Example 1_: correct tuning of alsamixer (input signal, i.e. line input) is max value of slider, when **z** = -24.
- * _Example 2_: ENOB signal source, which is unity sine with artificially coarsed (LSB bits cut) samples, here **z** will show this remaining (not cutted) bits quantity. <br>
-Note that time is required for **z** to settle. 
+ * _Example 2_: ENOB signal source, which is unity sine with artificially coarsed (LSB bits cut) samples, here **z** will show this remaining (not cutted) bits quantity.
+> [!Note]
+> Time is required for **z** to settle. 
 
 Btw, z is not ENOB, while they can match exactly (like for ENOB calibration sources). Z can be less (deeper, or more in its abs value) than ENOB, like for input white noise of sound card, when z = -24 and ENOB ~13; but ENOB can't be better (more) than z in its abs value.
 
@@ -67,10 +73,12 @@ Hi-DPI aka Window (up)scaling
 * For _pure X11_, we can set lines, points, and plot (and so, window) sizes, but not font size.
 * For _openGL_, in addition to it, we also have scaling. There is better if scale factor is integer (_N_ * 100%).<br>
 We have two options:
-  * One is well known, and acts like `QT_SCALE_FACTOR=N` (_we do not have Qt, so just an example_). It works as picture upscaling, except that vector-based (scalable) elements of window are redrawn with full resolution. <br>
-_Note_ that in this case, we got nice picture, but do not increase "real" resolution (like X axis frequency points quantity).
-  * Font only scaling. Other elements are remaining under regular size options control. When operator scales both font and plot dimensions via their own controls, we get result looks similar to above, yet have benefit of increased real video resolution. <br>
-_Note_: Spectrogram lines and points width are also scaled with font scale (along with they have its own control).
+* - One is well known, and acts like `QT_SCALE_FACTOR=N` (_we do not have Qt, so just an example_). It works as picture upscaling, except that vector-based (scalable) elements of window are redrawn with full resolution. 
+> [!Note]
+> In this case, we got nice picture, but do not increase "real" resolution (like X axis frequency points quantity).
+* - Font only scaling. Other elements are remaining under regular size options control. When operator scales both font and plot dimensions via their own controls, we get result looks similar to above, yet have benefit of increased real video resolution. <br>
+> [!Note]
+> Spectrogram lines and points width are also scaled with font scale (along with they have its own control).
 
 Control
 -------
@@ -89,7 +97,12 @@ ENOB MEASUREMENT
 ----------------
 We have special `-e` key to show _effecive number of bits_ (**ENOB**) of input signal. It show some labels on right Y scale. It also switch default measure mode to AVG (noise) for all channels. ENOB should be measured with all care of noise measurement. Extra calibrated noise sources can be feed to extra channels to check if ENOB scale is correct.
 
-Note that ENOB defined like SINAD with one tone with (near-)unity (max) amplitude. ENOB is not just silence input noise of ADC: it will be worse than that, and it shows why just input noise floor measurement is way less useful than ENOB (which is "real" noise). Tip: Use stats in our SA to see if our ADC samples are near unity, but never overloaded.
+> [!Note]
+> ENOB defined like SINAD with one tone with (near-)unity (max) amplitude.
+
+ENOB is not just silence input noise of ADC: it will be worse than that, and it shows why just input noise floor measurement is way less useful than ENOB (which is "real" noise).
+> [!Tip]
+> Use **stats** in our SA to see if our ADC samples are near unity, but never overloaded.
 
 Requirement of unity tone for ENOB measurement is directly requires spectrum analysis, because, unlike of just SNR measurement, it can't be measured using oscilloscope or VU meter as normal S+N to N radio.
 
@@ -186,7 +199,8 @@ From as simple as (add `-e` for ENOB scale)...
 ![jasmine-sa-1](https://github.com/user-attachments/assets/4216214d-b353-47db-ae77-129d0bc2e982)
 
 ...To smooth transparent overlay bar on given screen place on your DAW, with tiny CPU usage (will also work as _JACK application_ with **[Carla](https://github.com/twonoise/carla-patches)**)<br>
-_Tip_: See man page, or help using `-?`, to find these numbers meaning.
+> [!Tip]
+> See man page, or help using `-?`, to find these numbers meaning.
 
     jasmine-sa system:mic -O -A 1 -M 4 -o 0 -d -60,0,2,32 -h 0,2500,10,32 -p 4 -z -q CCEE -u 4 -x 100 -y 200 -b 31
 
@@ -243,7 +257,10 @@ _Offline or file support?_
 ------------------------
 There is no, currently.
 * For _incoming_ data array, it can be "played" as `.wav` file, then feed to us as usual. Incoming samples often are 32-bit `float`s, and better if in range **[-1.0 ... 1.0]**. But can be any other "playable" data, if it can be "played" with some JACK audio player without distortion. Multi-channel audio files are almost always contains _interleaved_ data.<br>
-Note that **JACK Transport** allow us to sync several players, so we get multiple incoming channels with zero skew guaranteed. Good if we have several _non-interleaved_ data sets.
+> [!Note]
+> **JACK Transport** allow us to sync several players,
+
+so we get multiple incoming channels with zero skew guaranteed. Good if we have several _non-interleaved_ data sets.
 * As for _resulting_ FFT data, there are last 16 screens are holded in screen memory; it should be easy to dump it to binary file, please feel free to implement this command. Data format is signed shorts (Q1.15) with **-327.67** to **327.67 dB** range, and **-32768** value is NODATA (out of bounds / non existent, etc).
 
 _I hate your pixels :-[_
