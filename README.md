@@ -287,7 +287,10 @@ CREDITS
 * Thanks to all brave people from #lad, #opengl Libera chat, and others, who helps me all this time.
 * Credits for C code are shown at tail of C file.
 
-About [^5]. This my question on SO was downvoted (aka deleted) very fast. Here is carbon copy.
+SO Deleted post
+---------------
+> [!Warning]
+> About [^5]. This my question on SO was downvoted (aka deleted) very fast. Here is carbon copy.
 
 > https://stackoverflow.com/questions/79065474/transparent-background-and-msaa-at-same-time-for-opengl-window-on-x11
 > 
@@ -370,7 +373,7 @@ This program is distributed in the hope that it will be useful, but WITHOUT ANY 
 
 [^3]: https://www.gaussianwaves.com/2020/09/equivalent-noise-bandwidth-enbw-of-window-functions/
 [^4]: Analog Devices MT-001.pdf
-[^5]: https://stackoverflow.com/questions/79065474/transparent-background-and-msaa-at-same-time-for-opengl-window-on-x11 **Not work**, please see below a copy.
+[^5]: https://stackoverflow.com/questions/79065474/transparent-background-and-msaa-at-same-time-for-opengl-window-on-x11 **Not work**, please see a copy above.
 [^5a]: https://www.reddit.com/r/opengl/comments/1dhwgn1/alpha_to_coverage_and_intel_gpus/
 [^6]: https://gitlab.freedesktop.org/mesa/mesa/-/issues/11275
 [^7]: https://hal.science/hal-00414583/document
