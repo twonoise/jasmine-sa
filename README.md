@@ -22,7 +22,9 @@ DESCRIPTION
 -----------
 _Note that we have man page._
 
-Please be familiar with DFT itself, and read at least [^1], [^2], [^4].
+Please be familiar with DFT itself, and read at least [^1], [^2], [^4]. 
+
+We will talk here about _real-time_ analysis. So, _spectrum analyzer_ will also mean here _real-time analyzer (RTA)_ audio instrument, and our code should be perfect to be this specific equipment.
 
 Oscilloscopes are well known, and simplest possible one can be just LED on few ft. wire, rotating in your hand in dark room. Unlike good oscilloscope, good spectrum analyzer is a bit more complex (in terms of both usage and internals) and expensive unit, so not every desktop test setup include it. But spectrum analyzer is way more sensitive sometimes, and have other unique properties, so it's often worth to have it; while it requires that operator have some experience of thinking in frequency domain.
 
