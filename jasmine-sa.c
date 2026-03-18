@@ -75,6 +75,8 @@ static void usage(const char *name)
   " -p, --phosphor=N         auto memory levels, 1..16. Default: 0\n"
   " -u, --subgrid-size=N     sub-grid pitch, px. Default: 5,\n"
   "                            zero for no grid\n"
+  " -i, --iq-input           assume inputs as complex pairs,\n"
+  "                            allow negative frequencies\n"
   " -e, --enob               show ENOB scale on right Y axis,\n"
   "                            and set Noise (Avg) mode for all\n"
   "                            channels as default\n"
@@ -122,7 +124,7 @@ static void usage(const char *name)
 }
 
 static const char *shortopts =
-  "k:r:j:h:d:D:p:u:ezc:q:l:s:fm:g:o:b:OM:A:S:F:x:y:wv:";
+  "k:r:j:h:d:D:p:u:iezc:q:l:s:fm:g:o:b:OM:A:S:F:x:y:wv:";
 
 static const struct option longopts[] = {
   {"fftk-max",     1, 0, 'k'},
@@ -133,6 +135,7 @@ static const struct option longopts[] = {
   {"db-pwr",       1, 0, 'D'},
   {"phosphor",     1, 0, 'p'},
   {"subgrid-size", 1, 0, 'u'},
+  {"iq-input",     0, 0, 'i'},
   {"enob",         0, 0, 'e'},
   {"show-zero",    0, 0, 'z'},
   {"colors",       1, 0, 'c'},
@@ -184,6 +187,7 @@ int windowBits = 0;
 
 int maxFFTK = 20;
 int maxRoll = 16;
+int optIQ = 0;
 int optShowEnob = 0;
 int optShowZero = 0;
 int opacity = 100;  // background, 0...100 %
@@ -331,7 +335,8 @@ uint32_t plotSamplesNum;
 float fftPlotTime, fftsPerSecond, framesPerSecond;
 
 uint64_t fftSizeK, fftOldSizeK;
-double *fftin[MAXCH], inmin[MAXCH], inminAbsNonzero[MAXCH], inmax[MAXCH];
+fftw_complex *fftin[MAXCH];
+double *fftinR[MAXCH], inmin[MAXCH], inminAbsNonzero[MAXCH], inmax[MAXCH];
 
 #define MINFFTK 13
 #define MAXFFTK 25  // 31 is max.
@@ -372,8 +377,10 @@ int rollPhase = 0;
 float stepAbs, stepRel;
 int squeeze;
 
-// JACK
 uint64_t channels;
+
+// JACK
+uint64_t jackPorts;
 int64_t sampleRate; // Not uint64_t
 const size_t sample_size_4bytes = sizeof(jack_default_audio_sample_t);
 char portName[MAXCH][64];
@@ -493,7 +500,7 @@ void plotGotoXY(int x, int y)
 
 void plotSetColors(int fg, int bg)
 {
-  fgcolor = fg % 16; // 0..7 font colors, 8..15 line colors
+  fgcolor = fg % 18; // 0..9 font colors, 10..17 line colors
   bgcolor = bg; // Can be negative.
 }
 
@@ -676,7 +683,13 @@ void legend(void)
   {
     yy += 4;
     plotSetColors(i + 10, -1);
-    plotStr("Ch. %d: %s", i, portName[i]);
+    if (optIQ)
+    {
+      plotStr("Ch. %d: %s", i, portName[i * 2]);
+      plotStr("     & %s", portName[i * 2 + 1]);
+    }
+    else
+      plotStr("Ch. %d: %s", i, portName[i]);
     plotStr("%s %s", measModeStr[measMode[i]], fftWindowStr[fftWindow[i]]);
   }
 
@@ -1045,7 +1058,7 @@ void newFft(int forceClear)
     roll = roll * 2;
   }
 
-  chunkSize = fftSize * channels * sample_size_4bytes / roll;
+  chunkSize = fftSize * jackPorts * sample_size_4bytes / roll;
 
   while ((stepRel < fmax(MINSTEP, stepAbs)) && (stepRel < MAXSTEP))
     stepRel = stepRel * 2.0;
@@ -1543,7 +1556,7 @@ static void *
 disk_thread (void *arg)
 {
   jack_thread_info_t *info = (jack_thread_info_t *) arg;
-  uint64_t bufSize = (1 << MAX(maxFFTK, 16)) * channels * sample_size_4bytes * 1;
+  uint64_t bufSize = (1 << MAX(maxFFTK, 16)) * jackPorts * sample_size_4bytes * 1;
   void *buf = calloc (bufSize, 1);
   uint64_t bufPointer = 0;
   uint64_t readSpace;
@@ -1554,7 +1567,7 @@ disk_thread (void *arg)
 
   pthread_mutex_lock (&disk_thread_lock);
   info->status = 0;
-  channels = info->channels;
+  jackPorts = info->channels;
 
   void fftExecuteAndProcessOneChannel(int ch)
   {
@@ -1576,6 +1589,7 @@ disk_thread (void *arg)
 
 #ifdef straight
     // This one can't be vectorized, because sample is not known each next cycle.
+// TODO add i,q! NOTE
     for (uint64_t i = 0; i < fftSize; i++)
     {
       double sample;
@@ -1591,11 +1605,11 @@ disk_thread (void *arg)
       if (1)
         // We use only left half of window, then mirroring it.
         if (i < (fftSize / 2))
-          fftin[ch][i] = sample * windowfunc[planNum][winNum][i];
+          fftinR[ch][i] = sample * windowfunc[planNum][winNum][i];
         else
-          fftin[ch][i] = sample * windowfunc[planNum][winNum][fftSize - 1 - i];
+          fftinR[ch][i] = sample * windowfunc[planNum][winNum][fftSize - 1 - i];
       else
-        fftin[ch][i] = sample; // When window = NoWindow
+        fftinR[ch][i] = sample; // When window = NoWindow
 
       Min = fmin(Min, sample);
       Max = fmax(Max, sample);
@@ -1605,32 +1619,77 @@ disk_thread (void *arg)
 #else
     // This one can be vectorized. Nobody knows how efficient is this anyway, we added extra re-read of array.
     // -g -O3 -mavx2 -ffast-math -fopt-info-vec-optimized -march=native
-    // 1. Deserialize first.
-    for (uint64_t i = 0; i < fftSize; i++)
+    if (optIQ)
     {
-      double sample;
+      // 1. Deserialize first.
+      for (uint64_t i = 0; i < fftSize; i++)
+      {
+        double sampleI, sampleQ;
 
-      // NOTE Here is point of loss of precision: JACK is float.
-      sample = ((float *)buf)[bufReadoutSamplePointer + ch];
+        // NOTE Here is point of loss of precision: JACK is float.
+        sampleI = ((float *)buf)[bufReadoutSamplePointer + ch * 2];
+        sampleQ = ((float *)buf)[bufReadoutSamplePointer + ch * 2 + 1];
 
-      bufReadoutSamplePointer = bufReadoutSamplePointer + channels;
-      // Should never be >, only ==, but still.
-      if (bufReadoutSamplePointer >= bufSizeInSamples)
-        bufReadoutSamplePointer = 0;
+        bufReadoutSamplePointer = bufReadoutSamplePointer + jackPorts;
+        // Should never be >, only ==, but still.
+        if (bufReadoutSamplePointer >= bufSizeInSamples)
+          bufReadoutSamplePointer = 0;
 
-      fftin[ch][i] = sample;
+        fftin[ch][i][0] = sampleI;
+        fftin[ch][i][1] = sampleQ;
 
-      Min = fmin(Min, sample);
-      Max = fmax(Max, sample);
-      if (sample != 0)
-        MinNZ = fmin(MinNZ, fabs(sample));
+        Min = fmin(Min, sampleI);
+        Min = fmin(Min, sampleQ);
+        Max = fmax(Max, sampleI);
+        Max = fmax(Max, sampleQ);
+        if (sampleI != 0)
+          MinNZ = fmin(MinNZ, fabs(sampleI));
+        if (sampleQ != 0)
+          MinNZ = fmin(MinNZ, fabs(sampleQ));
+      }
+      // 2a. Apply half of window (forth)...
+      for (uint64_t i = 0; i < (fftSize / 2); i++)
+      {
+        fftin[ch][i][0] = fftin[ch][i][0] * windowfunc[planNum][winNum][i];
+        fftin[ch][i][1] = fftin[ch][i][1] * windowfunc[planNum][winNum][i];
+      }
+      // 2b. ... then apply another half of window (backwards).
+      for (uint64_t i = (fftSize / 2); i < fftSize; i++)
+      {
+        fftin[ch][i][0] = fftin[ch][i][0] * windowfunc[planNum][winNum][fftSize-1 - i];
+        fftin[ch][i][1] = fftin[ch][i][1] * windowfunc[planNum][winNum][fftSize-1 - i];
+      }
     }
-    // 2a. Apply half of window (forth)...
-    for (uint64_t i = 0; i < (fftSize / 2); i++)
-      fftin[ch][i] = fftin[ch][i] * windowfunc[planNum][winNum][i];
-    // 2b. ... then apply another half of window (backwards).
-    for (uint64_t i = (fftSize / 2); i < fftSize; i++)
-      fftin[ch][i] = fftin[ch][i] * windowfunc[planNum][winNum][fftSize - 1 - i];
+    else
+    {
+      // 1. Deserialize first.
+      for (uint64_t i = 0; i < fftSize; i++)
+      {
+        double sample;
+
+        // NOTE Here is point of loss of precision: JACK is float.
+        sample = ((float *)buf)[bufReadoutSamplePointer + ch];
+
+        bufReadoutSamplePointer = bufReadoutSamplePointer + jackPorts;
+        // Should never be >, only ==, but still.
+        if (bufReadoutSamplePointer >= bufSizeInSamples)
+          bufReadoutSamplePointer = 0;
+
+        fftinR[ch][i] = sample;
+
+        Min = fmin(Min, sample);
+        Max = fmax(Max, sample);
+        if (sample != 0)
+          MinNZ = fmin(MinNZ, fabs(sample));
+      }
+      // 2a. Apply half of window (forth)...
+      for (uint64_t i = 0; i < (fftSize / 2); i++)
+        fftinR[ch][i] = fftinR[ch][i] * windowfunc[planNum][winNum][i];
+      // 2b. ... then apply another half of window (backwards).
+      for (uint64_t i = (fftSize / 2); i < fftSize; i++)
+        fftinR[ch][i] = fftinR[ch][i] * windowfunc[planNum][winNum][fftSize - 1 - i];
+    }
+
 #endif
 
     inmin[ch] = fmin(Min, inmin[ch]);
@@ -1670,7 +1729,7 @@ disk_thread (void *arg)
       winNFbins = fftWindowNFbins[fftWindow[ch]];
 
     double coe0 = 10.0 * intDbScale / (double)(2 - isDbPwr);
-    double coe1 = log10(1.0 / ((double)fftSize / 2.0)) * 2.0 + log10(1.0 / winNFbins);
+    double coe1 = log10(1.0 / ((double)fftSize / (double)(2 - optIQ))) * 2.0 + log10(1.0 / winNFbins);
 
     void storeBin(int bin, double power)
     {
@@ -1691,7 +1750,6 @@ disk_thread (void *arg)
     float centeringShift = 0;
 
     int firstSampleOffset = (int)(startHz * (float)fftSize / (float)sampleRate + centeringShift);
-
     int bins = 0;
     double fftPowerBin = -1e6;
     firstUsedBin = -1;
@@ -1702,21 +1760,26 @@ disk_thread (void *arg)
 // if (sample == plotSamplesNum) printf("ch %d plotSamplesNum %d bin %d\n", ch, plotSamplesNum, bin);
       int sampleAbs = sample + firstSampleOffset;
 
-      // The output is n/2+1 complex numbers. [6]
-      if ((sampleAbs >= 0) && (sampleAbs <= (fftSize / 2)))
+      // For real input: The output is n/2+1 complex numbers. [6]
+      // For complex input: The output should be just n.
+      if ((sampleAbs >= (optIQ ? -((int)fftSize / 2) : 0)) && (sampleAbs <= ((int)fftSize / 2)))
       {
+        if (sampleAbs < 0)
+          // Note, for complex input, we plot Nyquist point twice, at start and end of plot: so we have symmetrical n+1 point plot, while fftw gives us n point output.
+          sampleAbs += fftSize;
+
         if (firstUsedBin == -1)
           firstUsedBin = bin;
 
         // fftout[] is double.
-        double ffti = fftout[ch][sampleAbs][0];
-        double fftq = fftout[ch][sampleAbs][1];
+        double fftouti = fftout[ch][sampleAbs][0];
+        double fftoutq = fftout[ch][sampleAbs][1];
 
-        if ((ffti == 0) && (fftq == 0))
+        if ((fftouti == 0) && (fftoutq == 0))
           data[memCurr][bin][ch] = NODATA + optShowZero;
         else
         {
-          double fftPower = log10(ffti*ffti + fftq*fftq);
+          double fftPower = log10(fftouti*fftouti + fftoutq*fftoutq);
 
           if (! squeeze)
           {
@@ -1778,6 +1841,9 @@ disk_thread (void *arg)
 
     // glEnable(GL_POINT_SMOOTH);
     // glEnable(GL_LINE_SMOOTH);
+    // glEnable(GL_MULTISAMPLE);
+    // glEnable(GL_MULTISAMPLE_ARB);
+
     glEnable(GL_BLEND);
     glViewport(0, 0, winW, winH);
   }
@@ -1813,7 +1879,7 @@ disk_thread (void *arg)
 
       rollPhase = (rollPhase + chunksToRead) % roll;
 
-      bufReadoutPointer = bufPointer - fftSize * channels * sample_size_4bytes;
+      bufReadoutPointer = bufPointer - fftSize * jackPorts * sample_size_4bytes;
       if (bufReadoutPointer < 0)
         bufReadoutPointer = bufReadoutPointer + bufSize;
 
@@ -1871,9 +1937,9 @@ disk_thread (void *arg)
         for (int ch = 0; ch < channels; ch++)
           plotOneChannel(ch);
 
+        // Phase 3. Plot markers on top of all.
         if (optOpengl)
         {
-          // Phase 3. Plot markers on top of all.
           glLoadIdentity();
           glOrtho(0, winW, 0, winH, -1.0, 1.0);
         }
@@ -2155,7 +2221,7 @@ void initOpengl(void)
 // JACK stuff and threads are based on [5].
 int main(int argc, char *argv[])
 {
-  int opt,
+  int opt, xUpdated = 0,
       tmp0, tmp1, tmp2, tmp3;
 
   while ((opt = getopt_long_only(argc, argv, shortopts, longopts, NULL)) != -1)
@@ -2164,6 +2230,8 @@ int main(int argc, char *argv[])
     switch (opt)
     {
       case 'h':
+        xUpdated = 1;
+
         tmp0 = xHzMin;
         tmp1 = xHzMax;
         tmp2 = xGrids;
@@ -2214,6 +2282,7 @@ int main(int argc, char *argv[])
       case 'O':   optOpengl = 1; break;
       case 'f':  optRayFade = 1; break;
       case 'e': optShowEnob = 1; break;
+      case 'i':       optIQ = 1; break;
       case 'z': optShowZero = 1; break;
       case 'w': optRevWheel = 1; break;
       default:
@@ -2221,6 +2290,9 @@ int main(int argc, char *argv[])
         return -1;
     }
   }
+
+  if ((optIQ) && (! xUpdated))
+    xHzMin = -xHzMax;
 
 // Plot geometry
   if ((yDbMax - yDbMin) % yGrids != 0)
@@ -2242,13 +2314,14 @@ int main(int argc, char *argv[])
   const char *server_name = NULL;
   jack_status_t status;
 
-  channels = argc - optind;
+  channels = (argc - optind) / (optIQ + 1);
+  jackPorts = channels * (optIQ + 1);
 
   if (channels <= 0)
     ERR(J, "No ports given. Use 'jack_lsp -p | grep -B 1 output' to find some.");
 
   if (channels > MAXCH)
-    ERR(J, "Channels (JACK ports) %ld more than %d.\n", channels, MAXCH);
+    ERR(J, "Channels %ld (JACK ports %ld) more than %d (%d).\n", channels, jackPorts,  MAXCH, MAXCH * (optIQ + 1));
 
   client = jack_client_open(client_name, JackNullOption, &status, server_name);
 
@@ -2271,16 +2344,16 @@ int main(int argc, char *argv[])
   sampleRate = jack_get_sample_rate(client);
   uint64_t periodsize = jack_get_buffer_size(client);
 // It is important to keep arrays as small as possible to minimize memory page switch latency effects.
-  uint64_t rb_size = (1 << maxFFTK) * channels / sample_size_4bytes * 2;
+  uint64_t rb_size = (1 << maxFFTK) * jackPorts / sample_size_4bytes * 2;
 
-  MSG(J, "Connected, sampleRate %ld, buf (period) %ld, channels %ld, rb_size %ld.",  sampleRate, periodsize, channels, rb_size);
+  MSG(J, "Connected, sampleRate %ld, buf (period) %ld, channels %ld (%ld), rb_size %ld.",  sampleRate, periodsize, channels, jackPorts, rb_size);
 
   jack_thread_info_t thread_info;
   memset (&thread_info, 0, sizeof (thread_info));
   thread_info.rb_size = rb_size;
 
   thread_info.client = client;
-  thread_info.channels = channels;
+  thread_info.channels = jackPorts;
   thread_info.can_process = 0;
 
 // Init FFT
@@ -2295,8 +2368,12 @@ int main(int argc, char *argv[])
 
   for (int i = 0; i < channels; i++)
   {
-    // The input is n real numbers, while the output is n/2+1 complex numbers. [6]
-    fftin[i]  = fftw_alloc_real(1 << maxFFTK);
+    if (optIQ)
+      fftin[i]  = fftw_alloc_complex(1 << maxFFTK);
+    else
+      // The input is n real numbers, while the output is n/2+1 complex numbers. [6]
+      fftinR[i]  = fftw_alloc_real(1 << maxFFTK);
+
     // fftw_complex is double.
     fftout[i] = fftw_alloc_complex((1 << maxFFTK) / 2 + 1);
   }
@@ -2310,7 +2387,10 @@ int main(int argc, char *argv[])
 
     DBG(F, "Plan calculate for %ld points, 4 windows.", size);
     for (int c = 0; c < channels; c++)
-      plan[p][c] = fftw_plan_dft_r2c_1d((ulong)(((ulong)(1) << fftSizeK)), fftin[c], fftout[c], FFTW_ESTIMATE);
+      if (optIQ)
+        plan[p][c] = fftw_plan_dft_1d((ulong)(((ulong)(1) << fftSizeK)), fftin[c], fftout[c], -1, FFTW_ESTIMATE | FFTW_DESTROY_INPUT); // | FFTW_PATIENT
+      else
+        plan[p][c] = fftw_plan_dft_r2c_1d((ulong)(((ulong)(1) << fftSizeK)), fftinR[c], fftout[c], FFTW_ESTIMATE | FFTW_DESTROY_INPUT);
 
     for (int w = 0; w < MAXWIN; w++)
       windowfunc[p][w] = fftw_alloc_real(size * sizeof(double) / 2);
@@ -2433,7 +2513,7 @@ int main(int argc, char *argv[])
 // Init internals
   (spanHz < 0.1 * kHz) ? (units = Hz) : (units = kHz);
 
-  minHz = 0;
+  minHz = optIQ ? -(int)sampleRate / 2 : 0;
   maxHz = sampleRate / 2;
   minSpanHz = xGrids;
   maxSpanHz = sampleRate;
@@ -2457,7 +2537,10 @@ int main(int argc, char *argv[])
 
   for (int i = 0; i < channels; i++)
   {
-    fftw_free (fftin[i]);
+    if (optIQ)
+      fftw_free (fftin[i]);
+    else
+      fftw_free (fftinR[i]);
     fftw_free (fftout[i]);
   }
 
