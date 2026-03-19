@@ -2369,13 +2369,17 @@ int main(int argc, char *argv[])
   for (int i = 0; i < channels; i++)
   {
     if (optIQ)
+    {
       fftin[i]  = fftw_alloc_complex(1 << maxFFTK);
+      fftout[i] = fftw_alloc_complex(1 << maxFFTK);
+    }
     else
+    {
       // The input is n real numbers, while the output is n/2+1 complex numbers. [6]
       fftinR[i]  = fftw_alloc_real(1 << maxFFTK);
-
-    // fftw_complex is double.
-    fftout[i] = fftw_alloc_complex((1 << maxFFTK) / 2 + 1);
+      // fftw_complex is double.
+      fftout[i] = fftw_alloc_complex((1 << maxFFTK) / 2 + 1);
+    }
   }
 
   plans = (maxFFTK - MINFFTK + 1);
