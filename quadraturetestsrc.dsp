@@ -29,7 +29,7 @@ envelope = abs : max ~ -(1.0/ma.SR);
 
 outputI = testsrc( 0) * (BTNPOS | BTNNEG) +
           no.noises(2, 0) * 0.01 * BTNNOISE; // -40 dB;
-// Note that when both Pos & Neg buttons, these are cancel each other, so our Q-out VU meter will show zero.
+// Note that when both Pos & Neg buttons, these are cancel each other, so our Q-out VU meter will show zero. This is expected, and does not mean that both buttons should not be used at same time.
 outputQ = testsrc( 1) * BTNNEG +
           testsrc(-1) * BTNPOS +
           no.noises(2, 1) * 0.01 * BTNNOISE; // -40 dB;
