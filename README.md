@@ -296,6 +296,10 @@ So i prepare some filters.
 
     gcc -ggdb3 -Wall -lm -ljack -lX11 -lXrender -lXss -lGL -lfftw3_threads -lfftw3 -o jasmine-sa ./jasmine-sa.c && echo -e '{\n1\nMemcheck:Leak\n...\nsrc:dl-open.c:874\n}\n{\n2\nMemcheck:Leak\n...\nsrc:dl-init.c:121\n}\n' > /tmp/s && valgrind --leak-check=full --show-leak-kinds=all --suppressions=/tmp/s ./jasmine-sa -k 16 system:capture_1 -e -O -M 0 -A 1 -o 0
     
+USING KFR
+---------
+As there is [kfr](https://github.com/kfrlib/kfr) exist, and looks like it is faster than `fftw3`, one may ask why it is not used here. It is essentially impossible due to this library can't be used with ANSI C program, as expected for scientific grade software. I will be glad to know that i am wrong, if some day i'll found C example of using it.
+
 
 KNOWN BUGS
 ----------
