@@ -20,6 +20,8 @@
 
 #include <fftw3.h>
 
+#include <kfr/capi.h>
+
 #include <jack/jack.h>
 #include <jack/ringbuffer.h>
 
@@ -64,7 +66,8 @@ static void usage(const char *name)
   printf("%s is multichannel hi-res Spectrum Analyzer for JACK\n"
   "Usage: %s [options] port1 [ port2 ... ]\n"
   "options:\n"
-  " -k, --fftk-max=N         max FFT size to 2^k. Default: 20\n"
+  " -t, --fft-type=N         0: fftw3 double (default), 1: kfr double\n"
+  " -k, --fft-kmax=N         max FFT size to 2^k. Default: 20\n"
   " -r, --roll=N             max roll factor, 1..256. Default: 16\n"
   " -j, --jobs=N             use 1 (default) to 4 fftw3's threads (aka jobs)\n"
   " -h, --hz=N[,N[,N[,N]]]   X axis: min (Hz), max (Hz), grids,\n"
@@ -124,10 +127,11 @@ static void usage(const char *name)
 }
 
 static const char *shortopts =
-  "k:r:j:h:d:D:p:u:iezc:q:l:s:fm:g:o:b:OM:A:S:F:x:y:wv:";
+  "t:k:r:j:h:d:D:p:u:iezc:q:l:s:fm:g:o:b:OM:A:S:F:x:y:wv:";
 
 static const struct option longopts[] = {
-  {"fftk-max",     1, 0, 'k'},
+  {"fft-type",     1, 0, 't'},
+  {"fft-kmax",     1, 0, 'k'},
   {"roll",         1, 0, 'r'},
   {"jobs",         1, 0, 'j'},
   {"hz",           1, 0, 'h'},
@@ -185,6 +189,7 @@ int defPhospor = 0;
 
 int windowBits = 0;
 
+int optType = 0;
 int maxFFTK = 20;
 int maxRoll = 16;
 int optIQ = 0;
@@ -342,7 +347,10 @@ double *fftinR[MAXCH], inmin[MAXCH], inminAbsNonzero[MAXCH], inmax[MAXCH];
 #define MAXFFTK 25  // 31 is max.
 #define MAXPLANS (MAXFFTK - MINFFTK + 1)
 fftw_complex *fftout[MAXCH];
-fftw_plan plan[MAXPLANS][MAXCH];
+fftw_plan plan_fftw[MAXPLANS][MAXCH];
+KFR_DFT_PLAN_F64* plan_kfr[MAXPLANS][MAXCH];
+KFR_DFT_REAL_PLAN_F64* plan_kfr_real[MAXPLANS][MAXCH];
+uint8_t* tmp = NULL;
 
 // 0: No/Custom, 1: Hanning, 2: FlatTop, 3: HFT144D.  [1] [2]
 // Long Chebyshev windows are takes too long time (months) to calc. (120, 150 att)
@@ -1709,11 +1717,17 @@ disk_thread (void *arg)
     // Stage 2: Do FFT.
     if (! stopped)
     {
-      DBV(F, "Ch. %d Start fftw_execute().", ch);
+      DBV(F, "Ch. %d Started fft plan execute.", ch);
 
-      fftw_execute(plan[planNum][ch]);
+      if (optType)
+        if (optIQ)
+          kfr_dft_execute_f64(plan_kfr[planNum][ch], fftout[ch][0], fftin[ch][0], tmp);
+        else
+          kfr_dft_real_execute_f64(plan_kfr_real[planNum][ch], fftout[ch][0], fftinR[ch], tmp);
+      else
+        fftw_execute(plan_fftw[planNum][ch]);
 
-      DBV(F, "Ch. %d Stop fftw_execute().", ch);
+      DBV(F, "Ch. %d Finished fft plan execute.", ch);
     }
 
     // Stage 3: Post-process FFT result:
@@ -2259,6 +2273,7 @@ int main(int argc, char *argv[])
         yDbMin    = FIT(MIN(tmp0, tmp1), -320, yDbMax - yGrids);
         break;
 
+      case 't':     optType = FIT(ul, 0, 1);    break;
       case 'k':     maxFFTK = FIT(ul, MINFFTK, MAXFFTK); break;
       case 'r':     maxRoll = FIT(ul, 1, 256);  break;
       case 'j':        jobs = FIT(ul, 1, 4);    break;
@@ -2387,19 +2402,55 @@ int main(int argc, char *argv[])
   for (int p = 0; p < plans; p++)
   {
     fftSizeK = MINFFTK + p;
-    uint64_t size = 1 << fftSizeK; // should be < INT_MAX
+    uint64_t size = 1UL << fftSizeK; // should be < INT_MAX
 
     DBG(F, "Plan calculate for %ld points, 4 windows.", size);
+
     for (int c = 0; c < channels; c++)
       if (optIQ)
-        plan[p][c] = fftw_plan_dft_1d((ulong)(((ulong)(1) << fftSizeK)), fftin[c], fftout[c], -1, FFTW_ESTIMATE | FFTW_DESTROY_INPUT); // | FFTW_PATIENT
+        if (optType)
+          plan_kfr[p][c] = kfr_dft_create_plan_f64(size);
+        else
+          plan_fftw[p][c] = fftw_plan_dft_1d(size, fftin[c], fftout[c], -1, FFTW_ESTIMATE | FFTW_DESTROY_INPUT); // | FFTW_PATIENT
       else
-        plan[p][c] = fftw_plan_dft_r2c_1d((ulong)(((ulong)(1) << fftSizeK)), fftinR[c], fftout[c], FFTW_ESTIMATE | FFTW_DESTROY_INPUT);
+        if (optType)
+#define KFR_PACK_PERM 0
+#define KFR_PACK_CCS 1
+          plan_kfr_real[p][c] = kfr_dft_real_create_plan_f64(size, KFR_PACK_CCS);
+        else
+          plan_fftw[p][c] = fftw_plan_dft_r2c_1d((ulong)(((ulong)(1) << fftSizeK)), fftinR[c], fftout[c], FFTW_ESTIMATE | FFTW_DESTROY_INPUT);
 
     for (int w = 0; w < MAXWIN; w++)
       windowfunc[p][w] = fftw_alloc_real(size * sizeof(double) / 2);
 
     windowfunc_calc(p, size);
+  }
+
+  if (optType)
+  {
+    uint64_t tmpSize = 0;
+
+    if (optIQ)
+    {
+      if (verbose > 3)
+        kfr_dft_dump_f64(plan_kfr[plans - 1][0]); // Take largest one.
+
+      tmpSize = kfr_dft_get_temp_size_f64(plan_kfr[plans - 1][0]);
+    }
+    else
+    {
+      if (verbose > 3)
+        kfr_dft_real_dump_f64(plan_kfr_real[plans - 1][0]); // Take largest one.
+
+      tmpSize = kfr_dft_real_get_temp_size_f64(plan_kfr_real[plans - 1][0]);
+
+    }
+    // W/o this check, valgrind says invalid size value: 0 posix_memalign
+    if (tmpSize)
+      tmp = (uint8_t*)kfr_allocate(tmpSize);
+    else
+      tmp = NULL; // Is this correct? FIXME
+    DBG(F, "Kfr tmp allocated %ld bytes.", tmpSize);
   }
 
 // Init GUI.
@@ -2475,7 +2526,7 @@ int main(int argc, char *argv[])
   {
     WRN(X, "Got depth %d instead of %d.", wa.depth, depth);
     if (optOpengl)
-      WRN(O, "Trying both Alpha & MSAA on Intel GPU?"); // [7]
+      WRN(O, "Trying both Alpha & MSAA on integrated GPU?"); // [7]
     depth = wa.depth;
   }
 
@@ -2553,13 +2604,27 @@ int main(int argc, char *argv[])
     for (int i = 0; i < MAXWIN; i++)
       fftw_free (windowfunc[p][i]);
     for (int i = 0; i < channels; i++)
-      fftw_destroy_plan (plan[p][i]);
+      if (optType)
+        if (optIQ)
+          kfr_dft_delete_plan_f64(plan_kfr[p][i]);
+        else
+          kfr_dft_real_delete_plan_f64(plan_kfr_real[p][i]);
+      else
+        fftw_destroy_plan (plan_fftw[p][i]);
   }
 
-  if (jobs > 1)
-    fftw_cleanup_threads();
+  if (optType)
+  {
+    if (tmp)
+      kfr_deallocate(tmp);
+  }
+  else
+  {
+    if (jobs > 1)
+      fftw_cleanup_threads();
 
-  fftw_cleanup();
+    fftw_cleanup();
+  }
 
   XFreeFont(dpy, xfont); // XUnloadFont() ?
   XFreeGC(dpy, bgColor);
