@@ -3,7 +3,7 @@ Jasmine-SA is multichannel hi-res Spectrum Analyzer for X11 &amp; JACK (Linux 64
 
 HIGHLIGHTS
 ----------
-* Closes the gap between <tt>fftw3</tt> library power and existing audio analyzers based on it, most of which are made for music, so looks a bit limited for measurements; one close to measurement precision is <tt>jaaa</tt>.
+* Closes the gap between <tt>fftw3</tt> or <tt>kfr</tt> DFT libraries power and existing audio analyzers based on these, most of which are made for music, so looks a bit limited for measurements; one close to measurement precision is <tt>jaaa</tt>.
 * No any UI deps, such as expiring each few years Qt or Gnome widgets. Not depends on (but feels well with any of) mouse, window managers, decorators, desktop things. It uses bare display and keyboard only, like one from golden era of instruments, HP 8563E. <br>
 _Note_: Mouse still can be used for markers (added per request).
 * No any tuning factors, just bare theory implemented as is.
@@ -22,7 +22,7 @@ DESCRIPTION
 -----------
 _Note that we have man page._
 
-Please be familiar with DFT itself, and read at least [^1], [^2], [^4]. 
+Please be familiar with DFT itself, and read at least [^1], [^2], [^4].
 
 We will talk here about _real-time_ analysis. So, _spectrum analyzer_ will also mean here _real-time analyzer (RTA)_ audio instrument, and our code should be perfect to be this specific equipment.
 
@@ -38,7 +38,7 @@ There are at least two essentially different types of spectrum analyzers are wid
 
    ...which proportionally increases time of acquire of this frequency point, to keep SNR. This detector bandwidth is most fundamental thing of every spectrum analysis. It obviously can't be zero, because we then need infinite time to acquire this frequency point or "bin". This bandwidth is called _reference bandwidth_, or **RBW**, and for real SA, it is ~ 100 Hz to 1 MHz with 10x or 3x steps. LPF should be near rectangle shape; when this is impossible (low RBW, 100...1000 Hz), we a) measure its width by 3 dB (re:amplitude) attenuation point, and b) get extra error measuring noise floor, see below why.
 
-   It can be easily seen that with lower RBW and longer acquire time for each point, we can't measure amplitude of signal bursts shorter than our acquire time (while still often able to see if they are exist, at least, but if they are occurs when scanner is tuned to this frequency, of course). Operator of SA should select RBW to balance between burst sensitivity and frequency resolution. The fact that amplitude is not always measureable, or even louder, no any guarantee that collected points are represent some "real" value (because, at least, length of signal of this particular frequency is not known by SA), makes the name of instrument not **Meter**, but **Analyzer**: It gives (often very specific for human eye) picture, but still operator's deep knowledge required to interpret it. In particular, when measuring cursor ("Marker") displayed on graph, it should be accounted with care.  
+   It can be easily seen that with lower RBW and longer acquire time for each point, we can't measure amplitude of signal bursts shorter than our acquire time (while still often able to see if they are exist, at least, but if they are occurs when scanner is tuned to this frequency, of course). Operator of SA should select RBW to balance between burst sensitivity and frequency resolution. The fact that amplitude is not always measureable, or even louder, no any guarantee that collected points are represent some "real" value (because, at least, length of signal of this particular frequency is not known by SA), makes the name of instrument not **Meter**, but **Analyzer**: It gives (often very specific for human eye) picture, but still operator's deep knowledge required to interpret it. In particular, when measuring cursor ("Marker") displayed on graph, it should be accounted with care.
 
 2. Digital one, or, most often, DFT(FFT)-based SA. We will omit combined type (radio frequency ones) of FFT SAs, and will talk only about baseband (down to 0 Hz) instruments, w/o frequency conversions, so it's basically an ADC as analog part, like PC sound card.
 FFT SA keep all properties and limitations of real SA exactly, except that they add one more step of deep of understanding. There is fundamental difference in noise floor measurement between real SA and FFT SA. Real SA does not require special menu or operator knowledge beyond classic noise floor theory. FFT SA are uses special windowing function. It is essential thing across FFT SAs, and it defines many aspects like precision of amplitude and frequency, and dynamic range. Well known FFT windows are have < 90 dB dynamic range, limited by side lobes of pulse responce of windowing function; so we'll need for HFT144D [^1] or so for more dynamic. Any window, except no-window aka rectangle/unity window, have important property: it collect not only exact signal power, if any, but also some adjacent point powers; they all will be summed, and if these points are mostly noise, we will have well defined _noise amplification_ of this particular windowing function. In other words: each point on FFT plot is really some combination (weighted sum) of few adjacent points. It is like if we use not rectangular but trapezoid-like filter in real SA; it is fundamentally impossible to have rectangular one in windowed FFT SA.
@@ -58,11 +58,11 @@ Important property of our FFT SA is X axis (horizontal) zoom, or span, is wide r
 Some other controls
 -------------------
 
-_Video bandwidth_, or **VBW**, can be limited for some cases like stable noise floor measure. First, we setup all things (frequency, etc) and see if we have expected picture; then, we limit VBW to filter it, and wait a lot more for stable picture. There are two types of VBW limiters. For real SA, it is often multi-point averaging (imagine an LPF at CRT ray Y deflection input). For FFT SA, there is also independent (per-point) filter often used; they also can be combined. We use only per-point one in our code yet. 
+_Video bandwidth_, or **VBW**, can be limited for some cases like stable noise floor measure. First, we setup all things (frequency, etc) and see if we have expected picture; then, we limit VBW to filter it, and wait a lot more for stable picture. There are two types of VBW limiters. For real SA, it is often multi-point averaging (imagine an LPF at CRT ray Y deflection input). For FFT SA, there is also independent (per-point) filter often used; they also can be combined. We use only per-point one in our code yet.
 > [!Note]
 > VBW is CRT trace run time thing, it will not used when Stopped state.
 
-By either pressing key twice, or, going with `+`, `-` control to above VBW maximum, we got **Max hold** mode. 
+By either pressing key twice, or, going with `+`, `-` control to above VBW maximum, we got **Max hold** mode.
 > [!Note]
 > To measure with markers on **Max hold**, we'll need to have _Tone (MAX)_ but not _Noise (AVG)_ measurement mode.
 
@@ -76,7 +76,7 @@ We have per-channel _statistics_ of input signal(s). It show min and max values 
  * _Example 1_: correct tuning of alsamixer (input signal, i.e. line input) is max value of slider, when **z** = -24.
  * _Example 2_: ENOB signal source, which is unity sine with artificially coarsed (LSB bits cut) samples, here **z** will show this remaining (not cutted) bits quantity.
 > [!Note]
-> Time is required for **z** to settle. 
+> Time is required for **z** to settle.
 
 Btw, z is not ENOB, while they can match exactly (like for ENOB calibration sources). Z can be less (deeper, or more in its abs value) than ENOB, like for input white noise of sound card, when z = -24 and ENOB ~13; but ENOB can't be better (more) than z in its abs value.
 
@@ -85,7 +85,7 @@ Hi-DPI aka Window (up)scaling
 * For _pure X11_, we can set lines, points, and plot (and so, window) sizes, but not font size.
 * For _openGL_, in addition to it, we also have scaling. There is better if scale factor is integer (_N_ * 100%).<br>
 We have two options:
-* - One is well known, and acts like `QT_SCALE_FACTOR=N` (_we do not have Qt, so just an example_). It works as picture upscaling, except that vector-based (scalable) elements of window are redrawn with full resolution. 
+* - One is well known, and acts like `QT_SCALE_FACTOR=N` (_we do not have Qt, so just an example_). It works as picture upscaling, except that vector-based (scalable) elements of window are redrawn with full resolution.
 > [!Note]
 > In this case, we got nice picture, but do not increase "real" resolution (like X axis frequency points quantity).
 * - Font only scaling. Other elements are remaining under regular size options control. When operator scales both font and plot dimensions via their own controls, we get result looks similar to above, yet have benefit of increased real video resolution. <br>
@@ -134,13 +134,13 @@ _Perfect noise_ sine source with ~25 ENOB. The problem with it is exact ENOB of 
 > This command will work correctly even [above 192 kS/s](https://github.com/twonoise/jasmine-sa/?tab=readme-ov-file#above-192-kss).
 
     gst-launch-1.0 audiotestsrc freq=749.999 volume=1.0 ! audio/x-raw,channels=2 ! jackaudiosink
-    
+
 The ENOB of 32-bit float obviously defined and should be well known, but no any paper about it. Trying to estimate it myself, gives value of 24.6535, which is differ from ~25 i get during calibrated measurements:
 
-<details> 
+<details>
  <summary>[C code]</summary>
- 
-    // Prints effective number of bits of ideal sine, possible using float. 
+
+    // Prints effective number of bits of ideal sine, possible using float.
     // Ideal means unity amplitude and orthogonal to wavetable buffer used (for Faust it's 65536 samples).
 	   void print_enob_for_sine_float (void)
     {
@@ -150,7 +150,7 @@ The ENOB of 32-bit float obviously defined and should be well known, but no any 
 		   result = result / (M_PI / 2.0);
 		   printf("%f\n", result); // prints 24.6535
 	   }
-    
+
 </details>
 
 _Bad noise_ sine source is same but with <tt>freq=750</tt> (when JACK Fs is 48 kHz or multiple of it; check it with <tt>jack_samplerate</tt>).
@@ -158,9 +158,9 @@ _Bad noise_ sine source is same but with <tt>freq=750</tt> (when JACK Fs is 48 k
 Quantizing noise sine source can be not only in form of C code as per [^1], but also in form of Faust plugin (i use this for real calibrations):
 
 > This may not work correctly [above 192 kS/s](https://github.com/twonoise/jasmine-sa/?tab=readme-ov-file#above-192-kss). Some tune-up of **Faust** may be need:
-> 
+>
 >     sed -i 's/192000/384000/' /usr/share/faust/platform.lib
->     sed -i 's/192000/384000/' /usr/share/faust/math.lib 
+>     sed -i 's/192000/384000/' /usr/share/faust/math.lib
 
     //  See my `enobsrc.dsp`, here is math.
     //  Compile using: `faust2lv2 -double ./enobsrc.dsp`
@@ -178,7 +178,7 @@ Quantizing noise sine source can be not only in form of C code as per [^1], but 
       ( bits : vbargraph("Bits Check [CV:0]", 8, 32) ),
       ( quant : ba.linear2db : vbargraph("Quant dB [CV:1]", -240, 0) )
     ;
-    
+
 Note that, unlike direct-type ADC, most PC sound cards, as well as other not-so-expensive (sigma-delta) ADC, are have _noise shaping_ which push out noise from audible band to upper band, so it's worth to measure ENOB not only below 20 kHz (which is default band for our SA), but also for full band. Noise shaping can depend of sample rate.
 
 BUILD
@@ -195,10 +195,18 @@ Pre-requisites for **Slackware**:
 
 Add `-pthread` key.
 
-**Compile**:
+Extra pre-requisit **for all systems**:
+We need special C API enabled version of `kfr` library. As this is not packaged currently, and, furthermore, local builds are recommended for `kfr`, let's compile it [^10] [^11]:
+
+    git clone https://github.com/kfrlib/kfr.git
+    cd kfr/
+    mkdir build && cd build
+    cmake -B build-release -GNinja -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=/usr/bin/clang -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DKFR_ENABLE_CAPI_BUILD=ON -DKFR_ENABLE_MULTIARCH=OFF -DKFR_ENABLE_AUDIO=OFF .. && ninja -C build-release install
+
+**Finally, Compile**:
 (_add_ `-fopt-info-vec-optimized` _key for some SIMD info_)
 
-    gcc ./jasmine-sa.c -Wshadow -Wall -g -O3 -ffast-math -march=native -lm -lbsd -ljack -lX11 -lXrender -lXss -lGL -lfftw3_threads -lfftw3 -o jasmine-sa
+    gcc ./jasmine-sa.c -Wshadow -Wall -g -O3 -ffast-math -march=native -lm -lbsd -ljack -lX11 -lXrender -lXss -lGL -lfftw3_threads -lfftw3 -lkfr_capi -o jasmine-sa
 
 
 EXAMPLES
@@ -210,7 +218,7 @@ EXAMPLES
 From as simple as (add `-e` for ENOB scale)...
 
     jasmine-sa system:capture_1 system:capture_2
-    
+
 ![jasmine-sa-1](https://github.com/user-attachments/assets/4216214d-b353-47db-ae77-129d0bc2e982)
 
 ...To smooth transparent overlay bar on given screen place on your DAW, with tiny CPU usage (will also work as _JACK application_ with **[Carla](https://github.com/twonoise/carla-patches)**)<br>
@@ -222,7 +230,7 @@ From as simple as (add `-e` for ENOB scale)...
 ![jasmine-sa-2](https://github.com/user-attachments/assets/6c49736b-11a5-49a0-9da0-f0903bbf3b32)
 
 ![jasmine-sa-3](https://github.com/user-attachments/assets/f42e1438-ba00-4472-bd11-84dfb9a6e99b)
-  
+
 
 ABOVE 192 kS/s?
 ---------------
@@ -231,7 +239,7 @@ JACK engine not only allows to go above 192 kS/s, but also does it at realtime, 
 Start JACK with **plug:hw:PCH** but not normal **hw:PCH**, like:
 
     jackd -dalsa -dplug:hw:PCH -r384000 -p4096 -n3 -Xraw
-    
+
 then test it:
 
     jack_samplerate
@@ -249,12 +257,12 @@ This SA is not (only) musical, but more like scientific, these instrumensts ofte
 
 * There is no zero/negative frequencies allowed;
 * And, there is no measurements are possible, only estimations, as no Exact, Max, or Avg, display method for entire scale is useful.
-    
+
 But feel free to implement log scale yourself: our code is _intended_ for user enhancements.
 
 _How do i move non-decorated window?_
 -------------------------------------
-When no caption nor border mode selected, _but_ no locked position mode, window is moveable as usual: 
+When no caption nor border mode selected, _but_ no locked position mode, window is moveable as usual:
 * either `Alt+Left mouse button drag` using any place inside of window;
 * or, Window menu (`Alt+Space`, or `Right click` on it on taskbar), then **Move**. I.e., this way it is possible without mouse.
 
@@ -295,15 +303,17 @@ Test for memory leaks. Note that either _all_ openGL apps have some leaks in ord
 So i prepare some filters.
 
     gcc -ggdb3 -Wall -lm -ljack -lX11 -lXrender -lXss -lGL -lfftw3_threads -lfftw3 -o jasmine-sa ./jasmine-sa.c && echo -e '{\n1\nMemcheck:Leak\n...\nsrc:dl-open.c:874\n}\n{\n2\nMemcheck:Leak\n...\nsrc:dl-init.c:121\n}\n' > /tmp/s && valgrind --leak-check=full --show-leak-kinds=all --suppressions=/tmp/s ./jasmine-sa -k 16 system:capture_1 -e -O -M 0 -A 1 -o 0
-    
-USING KFR
----------
-As there is [kfr](https://github.com/kfrlib/kfr) exist, and looks like it is faster than `fftw3`, one may ask why it is not used here. It is essentially impossible due to this library can't be used with ANSI C program, as expected for scientific grade software. I will be glad to know that i am wrong, if some day i'll found C example of using it.
 
 
 KNOWN BUGS
 ----------
-There is impossible to enter negative center frequency value, as `Minus` key already used, together with `Plus`, for panning. However, all others, like markers, panning and messages, should work with negative values.
+**1.** There is 73824 bytes leak, 96 jack's + 73728 kfr's, and it is same with either our full working code, as well as this empty code:
+
+    echo 'int main() { return 0; }' | gcc -lkfr_capi -ljack -o /tmp/test -xc - && valgrind /tmp/test
+
+It is not reported, because I am do not know where to report, as it is some rare combo of two: `-lkfr_capi` alone is clear always, and, `-ljack` alone is 96 bytes lost always, [which is reported](https://github.com/jackaudio/jack2/issues/1001).
+
+**2**. There is impossible to enter negative center frequency value, as `Minus` key already used, together with `Plus`, for panning. However, all others, like markers, panning and messages, should work with negative values.
 
 
 CREDITS
@@ -318,69 +328,69 @@ SO Deleted post
 > About [^5]. This my question on SO was downvoted (aka deleted) very fast. Here is carbon copy.
 
 > https://stackoverflow.com/questions/79065474/transparent-background-and-msaa-at-same-time-for-opengl-window-on-x11
-> 
+>
 > Transparent background and MSAA at same time for OpenGL window on X11
-> 
+>
 > Asked 8 months ago
-> 
+>
 > Modified 7 months ago
-> 
+>
 > Viewed 119 times
-> 
+>
 > -3
-> 
+>
 > This post is hidden. It was automatically deleted 7 months ago by CommunityBot.
-> 
+>
 > I need (A) transparent or semi-transparent background (i.e., not just transparent things in opaque window), like per [1], [2], [3]. At the same time, i need (B) MSAA (or GPU-accelerated smoothing of other type). There are varoius working examples for (B). The only working example for (A) for up-to-day OpenGL i found, is [4]; the reason why is quite hard to obtain transparent background with OpenGL & X11, author of [4] commented here [5] (2nd answer from top, expand comments and read important thing about "You definitely must use XRenderPictFormat...").
-> 
+>
 > But now i need to join (A) & (B), with GPU only. No any example of this combo, and even no any info if it can/should be possible in theory. After a lot of coffees and segfaults, i am have partial understanding with it. Long story short, if we look at glxinfo | grep "32 tc" or so, it can be found that on Intel GPUs, regardless of if it is battery operated Celeron or hundered Watts CPU, there are no one Visual with MSAA: two right columns are zeroes. Or, when with MSAA (up to 16x), there is no one Visual with Alpha. And my massive trial-and-errors with C code, all are failed, confirms this (so far). My Frankenstein made of (A) and (B) does not want to alive.
-> 
+>
 > Contrary to that, with (external) Nvidia GPU, even old one, there is no problem to have (A) & (B) at same time: you 1) see this via glxinfo, 2) just take code [4] and add/enable all the OpenGL eyecandies.
-> 
+>
 > So it shows that (a) Intel GPU (or, (b) current Linux Intel driver/OpenGL) makes it impossible.
-> 
+>
 > Q1: How can i confirm that with theoretical specs of hardware?
-> 
+>
 > Q2: Is glxinfo output mostly driver-dependent?
-> 
+>
 > So far, so good. Know that it is impossible (with Intel, which is my target, i am limited in physical size of setup) is better than not know it at all.
-> 
+>
 > BUT.
-> 
+>
 > My old Compiz easily overcomes this. On Intel GPU, using Window Opacity, i can get window transparency (or transparent window over another transparent window, or even over a video) with exact pixel-precision math, and at no any noticeable bit of extra CPU load. Compiz uses the OpenGL library as the interface to the graphics hardware, as per wiki.
-> 
+>
 > Q3. How can it be possible?
-> 
+>
 > Q4. Again, where are the specs for this patricular case?
-> 
+>
 > This (Compiz's) type of transparency (C) can be fundamentally different from (A), because theoretically can be implemented without alpha channel, because all the pixels of one window are same "alpha" (semi-transparency) value (unlike my (A) case, where i need fully opaque elements). How i can in my OpenGL C code use this (C) per-window semi-transparency?
-> 
+>
 > UPDATE.
-> 
+>
 > For semi-transparency of type (C), i found, test for CPU efficiency, and use now in my release code, the X11 method described by author of [3] in comment #2 at [3]:
-> 
+>
 >     uint32_t cardinal_alpha = (uint32_t) (0.5/transpareny/ * (uint32_t)-1) ;
 >     XChangeProperty(display, win,
 >     XInternAtom(display, "_NET_WM_WINDOW_OPACITY", 0),
 >     XA_CARDINAL, 32, PropModeReplace, (uint8_t*) &cardinal_alpha,1) ;
-> 
+>
 > Thanks.
-> 
+>
 > Arch Linux, 6.11.1-arch1-1, OpenGL ES 3.2 Mesa 24.2.3-arch1.1, OpenGL ES GLSL ES 3.20
-> 
+>
 > OpenGL renderer string: Mesa Intel(R) UHD Graphics 630 (CFL GT2) (along other Intels)
-> 
+>
 > All test setups are use fresh software, except Compiz, it is stable 0.8.18.
-> 
+>
 > [1] [How to make an OpenGL rendering context with transparent background?](https://stackoverflow.com/questions/4052940)
-> 
+>
 > [2] [Setting transparent background color in OpenGL doesn't work](https://stackoverflow.com/questions/48675484)
-> 
+>
 > [3] https://gist.github.com/je-so/903479
-> 
+>
 > [4]
 > https://github.com/datenwolf/codesamples/blob/master/samples/OpenGL/x11argb_opengl/x11argb_opengl.c
-> 
+>
 > [5] https://stackoverflow.com/a/9215724
 
 
@@ -404,3 +414,5 @@ This program is distributed in the hope that it will be useful, but WITHOUT ANY 
 [^7]: https://hal.science/hal-00414583/document
 [^8]: https://people.ece.cornell.edu/land/PROJECTS/ReassignFFT/index.html
 [^9]: https://github.com/x42/spectra.lv2
+[^10]: https://github.com/kfrlib/kfr/blob/main/docs/docs/installation.md
+[^11]: https://github.com/kfrlib/kfr/issues/209
