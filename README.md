@@ -6,7 +6,7 @@ HIGHLIGHTS
 * Closes the gap between <tt>fftw3</tt> or <tt>kfr</tt> DFT libraries power and existing audio analyzers based on these, most of which are made for music, so looks a bit limited for measurements; one close to measurement precision is <tt>jaaa</tt>.
 * No any UI deps, such as expiring each few years Qt or Gnome widgets. Not depends on (but feels well with any of) mouse, window managers, decorators, desktop things. It uses bare display and keyboard only, like one from golden era of instruments, HP 8563E. <br>
 _Note_: Mouse still can be used for markers (added per request).
-* No any tuning factors, just bare theory implemented as is.
+* No any correction factors, just bare theory implemented as is.
 * Highly customizable window behaviour, size, and colors.
 * It can be run without desktop, via <tt>xinit</tt>.
 * Suitable for both small and large screens.
@@ -14,7 +14,7 @@ _Note_: Mouse still can be used for markers (added per request).
 * Background transparency for compare two spectrogram windows, or compare live spectrogram with saved picture used as substrate.
 * Uses only X11 internal font guaranteed to be available, ASCII only, gives uniform look and metrics everywhere. Pixel-precise and predictable, allows sharp look for any screens & discrete LED panels, papers and printed books.
 * Optional OpenGL, include both MSAA and Alpha transparency (_Testing_).
-* Brightness (luma) inversion option, HSL color model based.
+* Brightness (luma) inversion option, HSL color model based. Paper reports without damaged colors welcome.
 * Per-channel FFT windows, runtime selected.
 * One C file, with minimal and most stable deps.
 
