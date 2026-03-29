@@ -196,12 +196,16 @@ Pre-requisites for **Slackware**:
 Add `-pthread` key.
 
 Extra pre-requisit **for all systems**:
-We need special C API enabled version of `kfr` library. As this is not packaged currently, and, furthermore, local builds are recommended for `kfr`, let's compile it [^10] [^11]:
+We need special C API enabled version of `kfr` library. As this is not packaged currently for most systems, and, furthermore, local builds are recommended for `kfr`, let's compile it [^10] [^11]:
 
     git clone https://github.com/kfrlib/kfr.git
     cd kfr/
     mkdir build && cd build
     cmake -B build-release -GNinja -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=/usr/bin/clang -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DKFR_ENABLE_CAPI_BUILD=ON -DKFR_ENABLE_MULTIARCH=OFF -DKFR_ENABLE_AUDIO=OFF .. && ninja -C build-release install
+
+While, for **Archlinux**, at least, there is package, with C API enabled since Apr, 2026:
+
+    yay -S kfr
 
 **Finally, Compile**:
 (_add_ `-fopt-info-vec-optimized` _key for some SIMD info_)
