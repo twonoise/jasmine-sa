@@ -311,11 +311,18 @@ So i prepare some filters.
 
 KNOWN BUGS
 ----------
-**1.** There is 73824 bytes leak, 96 jack's + 73728 from allocation process itself, and it is same with either our full working code, as well as this empty code:
+**1.** There is 73824 bytes leak, 96 jack's + 73728 from linking process itself, and it is same with either our full working code, as well as this empty code:
 
     echo 'int main() { return 0; }' | gcc -lkfr_capi -ljack -o /tmp/test -xc - && valgrind /tmp/test
 
-It is not reported, because I am do not know where to report, as it is some rare combo of two: `-lkfr_capi` alone is clear, and, `-ljack` alone is only 96 bytes lost, [which is reported](https://github.com/jackaudio/jack2/issues/1001).
+It is not reported, because I am do not know where to report, as it is some rare combo of two: `-lkfr_capi` alone is clear, and, `-ljack` alone is only 96 bytes lost, [which is reported](https://github.com/jackaudio/jack2/issues/1001). So there are at least three places to talk: _JACK_, _KFR_, and _Valgrind_ itself.
+
+Also not worked:
+* Solution provided at JACK issue above: It happily fixes 96 bytes JACK memory leak, but not linking one.
+* `gcc -fsanitize=address -fno-omit-frame-pointer -g`, as well as other than `valgrind` memleak detectors and ways, but these all are for non-empty C code body.
+* Downgrade JACK to 1.9.12 from 2019 (oldest the Arch's repos have).
+
+
 
 **2**. There is impossible to enter negative center frequency value, as `Minus` key already used, together with `Plus`, for panning. However, all others, like markers, panning and messages, should work with negative values.
 
