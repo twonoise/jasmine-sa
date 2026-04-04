@@ -348,8 +348,8 @@ double *fftinR[MAXCH], inmin[MAXCH], inminAbsNonzero[MAXCH], inmax[MAXCH];
 #define MAXPLANS (MAXFFTK - MINFFTK + 1)
 fftw_complex *fftout[MAXCH];
 fftw_plan plan_fftw[MAXPLANS][MAXCH];
-KFR_DFT_PLAN_F64* plan_kfr[MAXPLANS][MAXCH];
-KFR_DFT_REAL_PLAN_F64* plan_kfr_real[MAXPLANS][MAXCH];
+KFR_DFT_PLAN_F64* plan_kfr[MAXPLANS];
+KFR_DFT_REAL_PLAN_F64* plan_kfr_real[MAXPLANS];
 uint8_t* tmp = NULL;
 
 // 0: No/Custom, 1: Hanning, 2: FlatTop, 3: HFT144D.  [1] [2]
@@ -675,8 +675,8 @@ void legend(void)
   plotGotoXY(DX + xSize + DX - 2, 5);
   plotSetColors(2, -1);
   plotStr("Fs: %g kHz", sampleRate / 1000.0);
-  plotStr("FFTW3: Double, %d thr", jobs);
-  plotStr("FFT: %ld", (1 << fftSizeK));
+  plotStr(optType ? "KFR Double, auto thrd" : "FFTW3 Double, %d thrd", jobs);
+  plotStr("FFT: %ld", (1UL << fftSizeK));
   plotStr("Start:  %.6g %s", startHz DUNITS2STR);
   plotStr("Stop:   %.6g %s", (startHz + spanHz) DUNITS2STR);
   plotStr("Center: %.6g %s", (startHz + spanHz / 2.0) DUNITS2STR);
@@ -904,7 +904,7 @@ void plotOneChannel(int ch)
 // Two shape of markers: diamonds or star, depend if marker is delta.
 void plotMkr(int x, int y, int ch, int isDelta, int value, float freq)
 {
-  XImage *xim;
+  XImage *xim = NULL;
   int8_t q = mkrSize;
   int8_t p[12][4] = {{-q, 0, 0, q}, {0, q, q, 0}, {q, 0, 0, -q}, {0, -q, -q, 0},
         {-q/2, 0, 0, q/2}, {0, q/2, q/2, 0}, {q/2, 0, 0, -q/2}, {0, -q/2, -q/2, 0},
@@ -1033,7 +1033,7 @@ void newFft(int forceClear)
   if (spanHz == 0)
     ERR(F, "spanHz == 0");
 
-// These are experimental values, they should be adjusted due to variation in CPU && GPU power for particular system for best picture && eliminate low CPU warning.
+// These are experimental values, they should be adjusted due to variation in CPU && GPU power for particular system for best picture && eliminate low CPU warning. Also will differ when `fftw3` vs `kfr-fft` selected.
 #define MAXFPS 50
 #define MAXRBW -4
 #define MINRBW 8
@@ -1053,7 +1053,7 @@ void newFft(int forceClear)
 
   fftSizeK = FIT(fftSizeK, MINFFTK, maxFFTK);
 
-  fftSize = 1 << fftSizeK;
+  fftSize = 1UL << fftSizeK;
   fftPlotTime = fftSize / (float)sampleRate;
 
   stepAbs = sampleRate * xSize / (float)spanHz / (float)fftSize;
@@ -1721,9 +1721,9 @@ disk_thread (void *arg)
 
       if (optType)
         if (optIQ)
-          kfr_dft_execute_f64(plan_kfr[planNum][ch], fftout[ch][0], fftin[ch][0], tmp);
+          kfr_dft_execute_f64(plan_kfr[planNum], fftout[ch][0], fftin[ch][0], tmp);
         else
-          kfr_dft_real_execute_f64(plan_kfr_real[planNum][ch], fftout[ch][0], fftinR[ch], tmp);
+          kfr_dft_real_execute_f64(plan_kfr_real[planNum], fftout[ch][0], fftinR[ch], tmp);
       else
         fftw_execute(plan_fftw[planNum][ch]);
 
@@ -2309,7 +2309,7 @@ int main(int argc, char *argv[])
   if ((optIQ) && (! xUpdated))
     xHzMin = -xHzMax;
 
-// Plot geometry
+// Geometry of plot
   if ((yDbMax - yDbMin) % yGrids != 0)
     ERR(P, "dB span %d to grids %d ratio must be integer.", yDbMax - yDbMin, yGrids);
 
@@ -2359,7 +2359,7 @@ int main(int argc, char *argv[])
   sampleRate = jack_get_sample_rate(client);
   uint64_t periodsize = jack_get_buffer_size(client);
 // It is important to keep arrays as small as possible to minimize memory page switch latency effects.
-  uint64_t rb_size = (1 << maxFFTK) * jackPorts / sample_size_4bytes * 2;
+  uint64_t rb_size = (1UL << maxFFTK) * jackPorts / sample_size_4bytes * 2;
 
   MSG(J, "Connected, sampleRate %ld, buf (period) %ld, channels %ld (%ld), rb_size %ld.",  sampleRate, periodsize, channels, jackPorts, rb_size);
 
@@ -2372,32 +2372,34 @@ int main(int argc, char *argv[])
   thread_info.can_process = 0;
 
 // Init FFT
-  if (jobs > 1)
+  if ((! optType) && (jobs > 1))
   {
     if (! fftw_init_threads())
       ERR(F, "Thread creation error.");
 
     fftw_plan_with_nthreads(jobs);
-    MSG(F, "Using %d threads.", jobs);
+    MSG(F, "Using %d fftw3 threads.", jobs);
   }
 
+  // Looks like, it works fine for both fftw3 and kfrlib.
   for (int i = 0; i < channels; i++)
   {
     if (optIQ)
     {
-      fftin[i]  = fftw_alloc_complex(1 << maxFFTK);
-      fftout[i] = fftw_alloc_complex(1 << maxFFTK);
+      fftin[i]  = fftw_alloc_complex(1UL << maxFFTK);
+      fftout[i] = fftw_alloc_complex(1UL << maxFFTK);
     }
     else
     {
       // The input is n real numbers, while the output is n/2+1 complex numbers. [6]
-      fftinR[i]  = fftw_alloc_real(1 << maxFFTK);
+      fftinR[i]  = fftw_alloc_real(1UL << maxFFTK);
       // fftw_complex is double.
-      fftout[i] = fftw_alloc_complex((1 << maxFFTK) / 2 + 1);
+      fftout[i] = fftw_alloc_complex((1UL << maxFFTK) / 2 + 1);
     }
   }
 
   plans = (maxFFTK - MINFFTK + 1);
+  uint64_t tmpSize = 0;
 
   for (int p = 0; p < plans; p++)
   {
@@ -2406,52 +2408,38 @@ int main(int argc, char *argv[])
 
     DBG(F, "Plan calculate for %ld points, 4 windows.", size);
 
-    for (int c = 0; c < channels; c++)
+    if (optType)
       if (optIQ)
-        if (optType)
-          plan_kfr[p][c] = kfr_dft_create_plan_f64(size);
-        else
-          plan_fftw[p][c] = fftw_plan_dft_1d(size, fftin[c], fftout[c], -1, FFTW_ESTIMATE | FFTW_DESTROY_INPUT); // | FFTW_PATIENT
+      {
+        plan_kfr[p] = kfr_dft_create_plan_f64(size);
+        tmpSize = MAX(tmpSize, kfr_dft_get_temp_size_f64(plan_kfr[p]));
+      }
       else
-        if (optType)
-#define KFR_PACK_PERM 0
-#define KFR_PACK_CCS 1
-          plan_kfr_real[p][c] = kfr_dft_real_create_plan_f64(size, KFR_PACK_CCS);
+      {
+        plan_kfr_real[p] = kfr_dft_real_create_plan_f64(size, 1); // KFR_PACK_CCS
+        tmpSize = MAX(tmpSize, kfr_dft_real_get_temp_size_f64(plan_kfr_real[p]));
+      }
+    else
+      for (int c = 0; c < channels; c++)
+        if (optIQ)
+          plan_fftw[p][c] = fftw_plan_dft_1d(size, fftin[c], fftout[c], -1, FFTW_ESTIMATE | FFTW_DESTROY_INPUT); // | FFTW_PATIENT
         else
-          plan_fftw[p][c] = fftw_plan_dft_r2c_1d((ulong)(((ulong)(1) << fftSizeK)), fftinR[c], fftout[c], FFTW_ESTIMATE | FFTW_DESTROY_INPUT);
+          plan_fftw[p][c] = fftw_plan_dft_r2c_1d(size, fftinR[c], fftout[c], FFTW_ESTIMATE | FFTW_DESTROY_INPUT);
 
+    // Looks like, it works fine for both fftw3 and kfrlib.
     for (int w = 0; w < MAXWIN; w++)
       windowfunc[p][w] = fftw_alloc_real(size * sizeof(double) / 2);
 
     windowfunc_calc(p, size);
   }
 
-  if (optType)
-  {
-    uint64_t tmpSize = 0;
-
-    if (optIQ)
-    {
-      if (verbose > 3)
-        kfr_dft_dump_f64(plan_kfr[plans - 1][0]); // Take largest one.
-
-      tmpSize = kfr_dft_get_temp_size_f64(plan_kfr[plans - 1][0]);
-    }
-    else
-    {
-      if (verbose > 3)
-        kfr_dft_real_dump_f64(plan_kfr_real[plans - 1][0]); // Take largest one.
-
-      tmpSize = kfr_dft_real_get_temp_size_f64(plan_kfr_real[plans - 1][0]);
-
-    }
+  if (tmpSize)
     // W/o this check, valgrind says invalid size value: 0 posix_memalign
-    if (tmpSize)
-      tmp = (uint8_t*)kfr_allocate(tmpSize);
-    else
-      tmp = NULL; // Is this correct? FIXME
-    DBG(F, "Kfr tmp allocated %ld bytes.", tmpSize);
-  }
+    tmp = (uint8_t*)kfr_allocate(tmpSize);
+  else
+    tmp = NULL; // Is this correct? FIXME
+  DBG(F, "Kfr tmp allocated %ld bytes.", tmpSize);
+
 
 // Init GUI.
   const char *title = "Jasmine-SA";
@@ -2568,8 +2556,8 @@ int main(int argc, char *argv[])
 // Init internals
   (spanHz < 0.1 * kHz) ? (units = Hz) : (units = kHz);
 
-  minHz = optIQ ? -(int)sampleRate / 2 : 0;
   maxHz = sampleRate / 2;
+  minHz = optIQ ? -(int)maxHz : 0;
   minSpanHz = xGrids;
   maxSpanHz = sampleRate;
 
@@ -2603,13 +2591,14 @@ int main(int argc, char *argv[])
   {
     for (int i = 0; i < MAXWIN; i++)
       fftw_free (windowfunc[p][i]);
-    for (int i = 0; i < channels; i++)
-      if (optType)
-        if (optIQ)
-          kfr_dft_delete_plan_f64(plan_kfr[p][i]);
-        else
-          kfr_dft_real_delete_plan_f64(plan_kfr_real[p][i]);
+
+    if (optType)
+      if (optIQ)
+        kfr_dft_delete_plan_f64(plan_kfr[p]);
       else
+        kfr_dft_real_delete_plan_f64(plan_kfr_real[p]);
+    else
+      for (int i = 0; i < channels; i++)
         fftw_destroy_plan (plan_fftw[p][i]);
   }
 
@@ -2674,3 +2663,4 @@ CREDITS:
 [19] https://stackoverflow.com/a/17576405
 [20] https://stackoverflow.com/a/18821559
 */
+
