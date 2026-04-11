@@ -242,7 +242,7 @@ JACK engine not only allows to go above 192 kS/s, but also does it at realtime, 
 
 Start JACK with **plug:hw:PCH** but not normal **hw:PCH**, like:
 
-    jackd -dalsa -dplug:hw:PCH -r384000 -p4096 -n3 -Xraw
+    jackd -dalsa -dplug:hw:PCH -r384000 -p128 -n32 -Xraw
 
 then test it:
 
