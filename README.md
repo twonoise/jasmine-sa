@@ -312,7 +312,7 @@ So i prepare some filters.
 
 KNOWN BUGS
 ----------
-**1.** There is 73824 bytes leak, 96 jack's + 73728 from linking process itself, and it is same with either our full working code, as well as this empty code:
+**1:** There is 73824 bytes leak, 96 jack's + 73728 from linking process itself, and it is same with either our full working code, as well as this empty code:
 
     echo 'int main() { return 0; }' | gcc -lkfr_capi -ljack -o /tmp/test -xc - && valgrind /tmp/test
 
@@ -324,8 +324,9 @@ Also not worked:
 * Downgrade JACK to 1.9.12 from 2019 (oldest the Arch's repos have).
 
 
+**2:** There is impossible to enter negative center frequency value, as `Minus` key already used, together with `Plus`, for panning. However, all others, like markers, panning and messages, should work with negative values.
 
-**2**. There is impossible to enter negative center frequency value, as `Minus` key already used, together with `Plus`, for panning. However, all others, like markers, panning and messages, should work with negative values.
+**3:** The last (rightmost) point of spectrogram is displayed incorrectly, work in progress on it.
 
 
 CREDITS
