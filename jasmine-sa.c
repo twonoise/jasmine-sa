@@ -43,14 +43,11 @@ typedef GLXContext (*glXCreateContextAttribsARBProc)(Display*, GLXFBConfig, GLXC
 #define S  "System"
 #define X  "X11"
 
-// __label__ cleanup;
-
 #define cFmt(color,s,S) "\e[0;3"color"m"s":\e[0m "S"\n"
 #define DBV(s,S,...) if (verbose>3) printf(cFmt("5",s,S), ##__VA_ARGS__);
 #define DBG(s,S,...) if (verbose>2) printf(cFmt("4",s,S), ##__VA_ARGS__);
 #define MSG(s,S,...) if (verbose>1) printf(cFmt("2",s,S), ##__VA_ARGS__);
 #define WRN(s,S,...)       fprintf(stderr, cFmt("3",s,S), ##__VA_ARGS__);
-// #define ERR(s,S,...)     { fprintf(stderr, cFmt("1",s,S), ##__VA_ARGS__); goto cleanup;
 #define ERR(s,S,...)     { fprintf(stderr, cFmt("1",s,S), ##__VA_ARGS__); exit (1); }
 
 // HSL colors: individual Hue values...
@@ -279,17 +276,17 @@ float rbw;
 int programExit = 0;
 
 // X11 and optional openGL
-Display *dpy;
-Window win;
-XFontStruct *xfont;
+Display *dpy       = NULL;
+Window win         = 0;
+XFontStruct *xfont = NULL;
 Atom wm_delete_window;
 XSetWindowAttributes attr;
-GLXContext glcontext;
+GLXContext glcontext = 0;
 XVisualInfo visual;
 Pixmap pm, pmMkr;
 #define mkrW 192
 #define mkrH 64
-int depth;
+int depth = 0;
 
 // Corner shifts
 int DX = 32;
@@ -1087,7 +1084,7 @@ void newFft(int forceClear)
     newScreen(! stopped);
   }
 
-  DBG(F, "(2) sampleRate %ld, spanHz %ld, transform_size %ld", sampleRate, spanHz, fftSize);
+  DBG(F, "(2) sampleRate %ld, spanHz %ld, fftSize %ld", sampleRate, spanHz, fftSize);
   DBG(F, "(3) stepAbs %f, stepRel %f, roll %ld, fftSize %ld, chunkSize %ld", stepAbs, stepRel, roll, fftSize, chunkSize);
 
   float sampleNumF = startHz * (float)fftSize / (float)sampleRate;
@@ -1508,14 +1505,17 @@ void processMessages()
 {
   while(XPending(dpy))
   {
-    DBV(X, "Keyboard, mouse or X11 process...");
+    DBV(X, "Keyboard, mouse or X11 process.");
 
     XEvent e;
     XNextEvent(dpy, &e);
 
     if (e.type == ClientMessage)
       if ((Atom)e.xclient.data.l[0] == wm_delete_window) // [14] [15]
+      {
+        DBG(X, "Close window signal received.");
         programExit = 1;
+      }
 
     if (e.type == Expose)
       XFlushArea(0, 0, winW, winH);
@@ -1548,17 +1548,17 @@ typedef struct _thread_info
 } jack_thread_info_t;
 
 /* JACK data */
-unsigned int nports;
-jack_port_t **ports;
-jack_default_audio_sample_t **in;
+unsigned int nports = 0;
+jack_port_t **ports = NULL;
+jack_default_audio_sample_t **jack_in = NULL;
 jack_nframes_t nframes;
 
 /* Synchronization between process thread && disk thread. */
-jack_ringbuffer_t *rb;
+jack_ringbuffer_t *rb = NULL;
 pthread_mutex_t disk_thread_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t data_ready = PTHREAD_COND_INITIALIZER;
 uint64_t overruns = 0;
-jack_client_t *client;
+jack_client_t *client = NULL;
 
 static void *
 disk_thread (void *arg)
@@ -1828,7 +1828,7 @@ disk_thread (void *arg)
 
   void readSpaceAndDrawProgressbar()
   {
-    if (info->can_capture)
+    if ((info->can_capture) && (! programExit))
     {
       readSpace = jack_ringbuffer_read_space (rb);
       chunksToRead = readSpace / chunkSize;
@@ -2014,11 +2014,11 @@ jack_process (jack_nframes_t n_frames, void *arg)
     return 0;
 
   for (chn = 0; chn < nports; chn++)
-    in[chn] = jack_port_get_buffer (ports[chn], n_frames);
+    jack_in[chn] = jack_port_get_buffer (ports[chn], n_frames);
 
   for (i = 0; i < n_frames; i++)
     for (chn = 0; chn < nports; chn++)
-      if (jack_ringbuffer_write (rb, (void *) (in[chn]+i), sample_size_4bytes) < sample_size_4bytes)
+      if (jack_ringbuffer_write (rb, (void *) (jack_in[chn]+i), sample_size_4bytes) < sample_size_4bytes)
         overruns++;
 
   /* Tell the disk thread there is work to do.  If it is already
@@ -2038,16 +2038,14 @@ jack_process (jack_nframes_t n_frames, void *arg)
 static void signal_handler(int sig)
 {
   MSG(S, "Signal: Exit.");
-  jack_client_close(client);
-  exit(0);
-  // goto cleanup;
+  programExit = 1;
 }
 
 static void jack_shutdown(void *arg)
 {
   WRN(J, "JACK Server was lost.");
-  exit(0);
-  // goto cleanup;
+  pthread_cond_signal (&data_ready);
+  programExit = 1;
 }
 
 static void
@@ -2060,52 +2058,6 @@ run_disk_thread (jack_thread_info_t *info)
     WRN(J, "We have %ld overruns. Try rb_size > %d ?", overruns, info->rb_size);
     info->status = EPIPE;
   }
-}
-
-static void
-setup_ports (int sources, char *source_names[], jack_thread_info_t *info)
-{
-  unsigned int i;
-  size_t in_size;
-
-  /* Allocate data structures that depend on the number of ports. */
-  nports = sources;
-  ports = (jack_port_t **) malloc (sizeof (jack_port_t *) * nports);
-  in_size =  nports * sizeof (jack_default_audio_sample_t *);
-  in = (jack_default_audio_sample_t **) malloc (in_size);
-
-  rb = jack_ringbuffer_create (nports * sample_size_4bytes * info->rb_size);
-
-  /* When JACK is running realtime, jack_activate() will have
-   * called mlockall() to lock our pages into memory.  But, we
-   * still need to touch any newly allocated pages before
-   * process() starts using them.  Otherwise, a page fault could
-   * create a delay that would force JACK to shut us down. */
-  memset(in, 0, in_size);
-  memset(rb->buf, 0, rb->size);
-
-  for (i = 0; i < nports; i++)
-  {
-    char name[64];
-
-    sprintf(name, "input%d", i+1);
-
-    if ((ports[i] = jack_port_register (info->client, name, JACK_DEFAULT_AUDIO_TYPE, JackPortIsInput, 0)) == 0)
-    {
-      jack_client_close (info->client);
-      ERR(J, "Cannot register input port '%s'!", name);
-    }
-
-    sprintf(portName[i], source_names[i]);
-
-    if (jack_connect (info->client, portName[i], jack_port_name (ports[i])))
-    {
-      jack_client_close (info->client);
-      ERR (J, "Cannot connect input port '%s' to '%s'!", jack_port_name (ports[i]), portName[i]);
-    }
-  }
-
-  info->can_process = 1;    /* process() can start, now */
 }
 
 
@@ -2232,9 +2184,91 @@ void initOpengl(void)
 }
 
 
+#define FREE(how,what)  if (what) how(what)
+#define XFREE(how,what) if (what) how(dpy, what)
+static void cleanup()
+{
+  MSG(S, "Cleanup.");
+
+  XFREE(XFreeFont, xfont);
+  XFREE(XFreeGC, bgColor);
+  XFREE(XFreeGC, transparentColor);
+  for (int i = 0; i < 10; i++)
+    XFREE(XFreeGC, fontColor[i]);
+
+  for (int ch = 0; ch < MAXCH; ch++)
+    for (int grad = 0; grad < GRADIENTS; grad++)
+      for (int t = 0; t < 2; t++)
+        XFREE(XFreeGC, lineColor[ch * GRADIENTS + grad][t]);
+
+  XFREE(XFreePixmap, pm);
+  if (optOpengl)
+    XFREE(XFreePixmap, pmMkr);
+
+  if (windowBits & 8)
+    XScreenSaverSuspend (dpy, 0);
+
+  FREE(XCloseDisplay, dpy); // XCloseDisplay(dpy)
+  DBG(S, "Cleanup phase 1 reached.");
+
+  for (int i = 0; i < channels; i++)
+  {
+    if (optIQ)
+      fftw_free (fftin[i]);
+    else
+      fftw_free (fftinR[i]);
+    fftw_free (fftout[i]);
+  }
+  DBG(S, "Cleanup phase 2 reached.");
+
+  for (int p = 0; p < plans; p++)
+  {
+    for (int i = 0; i < MAXWIN; i++)
+      fftw_free (windowfunc[p][i]);
+
+    if (optType)
+      if (optIQ)
+        kfr_dft_delete_plan_f64(plan_kfr[p]);
+      else
+        kfr_dft_real_delete_plan_f64(plan_kfr_real[p]);
+    else
+      for (int i = 0; i < channels; i++)
+        fftw_destroy_plan (plan_fftw[p][i]);
+  }
+  DBG(S, "Cleanup phase 3 reached.");
+
+  if (optType)
+  {
+    if (tmp)
+      kfr_deallocate(tmp);
+  }
+  else
+  {
+    if (jobs > 1)
+      fftw_cleanup_threads();
+
+    fftw_cleanup();
+  }
+  DBG(S, "Cleanup phase 4 reached.");
+
+  FREE(jack_deactivate, client);
+  FREE(jack_client_close, client);
+  DBG(S, "Cleanup phase 5 reached.");
+
+  FREE(jack_ringbuffer_free, rb);
+  DBG(S, "Cleanup phase 6 reached.");
+
+  free(ports);
+  free(jack_in);
+  DBG(S, "Cleanup done, should exit now.");
+}
+
+
 // JACK stuff and threads are based on [5].
 int main(int argc, char *argv[])
 {
+  atexit( cleanup );
+
   int opt, xUpdated = 0,
       tmp0, tmp1, tmp2, tmp3;
 
@@ -2551,7 +2585,36 @@ int main(int argc, char *argv[])
   if (jack_activate(client))
     ERR(J, "Cannot activate client.");
 
-  setup_ports (argc - optind, &argv[optind], &thread_info);
+  /* setup_ports: Allocate data structures that depend on the number of ports. */
+  nports = MIN(argc - optind, MAXCH);
+  ports = (jack_port_t **) malloc (sizeof (jack_port_t *) * nports);
+  // ports = (jack_port_t **) malloc (sizeof (jack_port_t *) * MAXCH);
+  uint64_t in_size = nports * sizeof (jack_default_audio_sample_t *);
+
+  jack_in = (jack_default_audio_sample_t **) malloc (in_size);
+  rb = jack_ringbuffer_create (nports * sample_size_4bytes * thread_info.rb_size);
+
+  /* When JACK is running realtime, jack_activate() will have
+   * called mlockall() to lock our pages into memory.  But, we
+   * still need to touch any newly allocated pages before
+   * process() starts using them.  Otherwise, a page fault could
+   * create a delay that would force JACK to shut us down. */
+  memset(jack_in, 0, in_size);
+  memset(rb->buf, 0, rb->size);
+
+  for (int i = 0; i < nports; i++)
+  {
+    sprintf(portName[0], "input%d", i+1);
+
+    if ((ports[i] = jack_port_register (thread_info.client, portName[0], JACK_DEFAULT_AUDIO_TYPE, JackPortIsInput, 0)) == 0)
+      ERR(J, "Cannot register input port '%s'!", portName[0]);
+
+    sprintf(portName[i], argv[optind + i]);
+
+    if (jack_connect (thread_info.client, portName[i], jack_port_name (ports[i])))
+      ERR (J, "Cannot connect input port '%s' to '%s'!", jack_port_name (ports[i]), portName[i]);
+  }
+
 
 // Init internals
   (spanHz < 0.1 * kHz) ? (units = Hz) : (units = kHz);
@@ -2568,72 +2631,18 @@ int main(int argc, char *argv[])
   signal(SIGTERM, signal_handler);
   signal(SIGINT, signal_handler);
 
+
 // Main job
+  thread_info.can_process = 1;    /* process() can start, now */
+
   run_disk_thread (&thread_info);
 
+  thread_info.can_process = 0;
+
+
 // Finish & cleanup
-// cleanup:
-  jack_client_close (client);
-  jack_ringbuffer_free (rb);
-  free(ports);
-  free(in);
+// NOTE: atexit() auto starts cleanup() here.
 
-  for (int i = 0; i < channels; i++)
-  {
-    if (optIQ)
-      fftw_free (fftin[i]);
-    else
-      fftw_free (fftinR[i]);
-    fftw_free (fftout[i]);
-  }
-
-  for (int p = 0; p < plans; p++)
-  {
-    for (int i = 0; i < MAXWIN; i++)
-      fftw_free (windowfunc[p][i]);
-
-    if (optType)
-      if (optIQ)
-        kfr_dft_delete_plan_f64(plan_kfr[p]);
-      else
-        kfr_dft_real_delete_plan_f64(plan_kfr_real[p]);
-    else
-      for (int i = 0; i < channels; i++)
-        fftw_destroy_plan (plan_fftw[p][i]);
-  }
-
-  if (optType)
-  {
-    if (tmp)
-      kfr_deallocate(tmp);
-  }
-  else
-  {
-    if (jobs > 1)
-      fftw_cleanup_threads();
-
-    fftw_cleanup();
-  }
-
-  XFreeFont(dpy, xfont); // XUnloadFont() ?
-  XFreeGC(dpy, bgColor);
-  XFreeGC(dpy, transparentColor);
-  for (int i = 0; i < 10; i++)
-    XFreeGC(dpy, fontColor[i]);
-
-  for (int ch = 0; ch < MAXCH; ch++)
-    for (int grad = 0; grad < GRADIENTS; grad++)
-      for (int t = 0; t < 2; t++)
-        XFreeGC(dpy, lineColor[ch * GRADIENTS + grad][t]);
-
-  XFreePixmap(dpy, pm);
-  if (optOpengl)
-    XFreePixmap(dpy, pmMkr);
-
-  if (windowBits & 8)
-    XScreenSaverSuspend (dpy, 0);
-
-  XCloseDisplay(dpy);
   return (0);
 }
 
