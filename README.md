@@ -211,7 +211,7 @@ While, for **Archlinux**, at least, there is package, with C API enabled since A
 **Finally, Compile**:
 (_add_ `-fopt-info-vec-optimized` _key for some SIMD info_)
 
-    gcc ./jasmine-sa.c -Wshadow -Wall -g -O3 -ffast-math -march=native -lm -lbsd -ljack -lX11 -lXrender -lXss -lGL -lfftw3_threads -lfftw3 -lkfr_capi -o jasmine-sa
+    gcc ./jasmine-sa.c -Wshadow -Wall -Werror -g -O3 -ffast-math -march=native -lm -lbsd -ljack -lX11 -lXrender -lXss -lGL -lfftw3_threads -lfftw3 -lkfr_capi -o jasmine-sa
 
 
 EXAMPLES
