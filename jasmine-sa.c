@@ -1564,6 +1564,8 @@ static void *
 disk_thread (void *arg)
 {
   jack_thread_info_t *info = (jack_thread_info_t *) arg;
+  // It should be also not less than periodsize which we hope can't be > 64 kb.
+  // JackConstants.h says BUFFER_SIZE_MAX 8192; qjackctl is 4096.
   uint64_t bufSize = (1 << MAX(maxFFTK, 16)) * jackPorts * sample_size_4bytes * 1;
   void *buf = calloc (bufSize, 1);
   uint64_t bufPointer = 0;
@@ -2053,6 +2055,7 @@ run_disk_thread (jack_thread_info_t *info)
 {
   info->can_capture = 1;
   pthread_join (info->thread_id, NULL);
+  info->can_capture = 0;
   if (overruns > 0)
   {
     WRN(J, "We have %ld overruns. Try rb_size > %d ?", overruns, info->rb_size);
@@ -2237,18 +2240,15 @@ static void cleanup()
   }
   DBG(S, "Cleanup phase 3 reached.");
 
-  if (optType)
-  {
-    if (tmp)
-      kfr_deallocate(tmp);
-  }
-  else
+  if (!optType)
   {
     if (jobs > 1)
       fftw_cleanup_threads();
 
     fftw_cleanup();
   }
+  else
+    FREE(kfr_deallocate, tmp);
   DBG(S, "Cleanup phase 4 reached.");
 
   FREE(jack_deactivate, client);
@@ -2576,8 +2576,9 @@ int main(int argc, char *argv[])
 
 
 // JACK Part 2: Now we know that GUI setup, which takes some time, is done.
-  thread_info.can_capture = 0;
-  pthread_create (&thread_info.thread_id, NULL, disk_thread, &thread_info);
+  // NOTE Moved to below.
+  // thread_info.can_capture = 0;
+  // pthread_create (&thread_info.thread_id, NULL, disk_thread, &thread_info);
 
   jack_set_process_callback (client, jack_process, &thread_info);
   jack_on_shutdown (client, jack_shutdown, &thread_info);
@@ -2615,6 +2616,9 @@ int main(int argc, char *argv[])
       ERR (J, "Cannot connect input port '%s' to '%s'!", jack_port_name (ports[i]), portName[i]);
   }
 
+  // If it goes earlier [5], there is ~20 Mb memory leak at exit on ERRs above (if any), which is unrecoverable (can't be "fixed" via freeing something at cleanup or so). So i move it here, after all checks for fatal errors.
+  thread_info.can_capture = 0;
+  pthread_create (&thread_info.thread_id, NULL, disk_thread, &thread_info);
 
 // Init internals
   (spanHz < 0.1 * kHz) ? (units = Hz) : (units = kHz);
@@ -2634,14 +2638,12 @@ int main(int argc, char *argv[])
 
 // Main job
   thread_info.can_process = 1;    /* process() can start, now */
-
   run_disk_thread (&thread_info);
-
   thread_info.can_process = 0;
 
 
 // Finish & cleanup
-// NOTE: atexit() auto starts cleanup() here.
+  DBG(S, "Here atexit() starts cleanup().");
 
   return (0);
 }
