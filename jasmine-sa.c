@@ -2605,12 +2605,13 @@ int main(int argc, char *argv[])
 
   for (int i = 0; i < nports; i++)
   {
-    sprintf(portName[0], "input%d", i+1);
+    sprintf(portName[i], "input%d", i+1); // Used as temporary string. Updated later.
 
-    if ((ports[i] = jack_port_register (thread_info.client, portName[0], JACK_DEFAULT_AUDIO_TYPE, JackPortIsInput, 0)) == 0)
-      ERR(J, "Cannot register input port '%s'!", portName[0]);
+    if ((ports[i] = jack_port_register (thread_info.client, portName[i], JACK_DEFAULT_AUDIO_TYPE, JackPortIsInput, 0)) == 0)
+      ERR(J, "Cannot register input port '%s'!", portName[i]);
 
     sprintf(portName[i], argv[optind + i]);
+    DBV(J, "portName[%d] = `%s`", i, portName[i]);
 
     if (jack_connect (thread_info.client, portName[i], jack_port_name (ports[i])))
       ERR (J, "Cannot connect input port '%s' to '%s'!", jack_port_name (ports[i]), portName[i]);
