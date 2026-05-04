@@ -79,7 +79,7 @@ We have per-channel _statistics_ of input signal(s). It show min and max values 
 > [!Note]
 > Time is required for **z** to settle.
 
-Btw, z is not ENOB, while they can match exactly (like for ENOB calibration sources). Z can be less (deeper, or more in its abs value) than ENOB, like for input white noise of sound card, when z = -24 and ENOB ~13; but ENOB can't be better (more) than z in its abs value.
+Btw, **z** is not ENOB, while they can match exactly (like for ENOB calibration sources). **z** can be less (deeper, or more in its abs value) than ENOB, like for input white noise of sound card, when **z** = -24 and ENOB ~13; but ENOB can't be better (more) than **z** in its abs value.
 
 Hi-DPI aka Window (up)scaling
 -----------------------------
