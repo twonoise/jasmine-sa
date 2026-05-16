@@ -398,6 +398,13 @@ char portName[MAXCH][64];
 // Colors, and HSL->RGB [11] [12]
 // I try to rewrite [12] to integer-only: bytes in and bytes out.
 // To be even simpler, we need to limit hue span to 102 (0...0x66) or 204 (0...0xcc).
+// NOTE Will not work with -O3 magic, only -O2 allowed.
+uint16_t k (uint8_t N, uint8_t h)
+{
+  uint32_t result = (N * 255 + (h-1) * 12) % (12*255); // N = 0 (R), 8 (G), 4 (B)
+  return (uint16_t) result;
+}
+
 uint32_t ahsl2argb(uint8_t a, uint8_t h, uint8_t s, uint8_t l) // Full range 0..255 each
 {
 // NOTE h=0 is special one: forces not red, but gray color. Use 1 for red.
@@ -413,24 +420,21 @@ uint32_t ahsl2argb(uint8_t a, uint8_t h, uint8_t s, uint8_t l) // Full range 0..
   // 24 bit
   uint16_t A = (s * MIN(l, 255 - l) * 259) >> 8;
 
-  uint8_t f (uint8_t N)
-  {
-    uint16_t k = (N * 255 + (h-1) * 12) % (12*255); // N = 0 (R), 8 (G), 4 (B)
-
 #ifdef no_pre_multiplied_alpha
     // 24 bit
-    uint32_t r = (l * (257*255) - A * MAX(MIN(MIN(k - 3*255, 9*255 - k), 255), -255)) / (255*255);
+  #define f(N) (uint8_t) ((l * (257*255) - A * MAX(MIN(MIN(k(N, h) - 3*255, 9*255 - k(N, h)), 255), -255)) / (255*255))
 #else
     // 32 bit, Pre-multiplied Alpha [9] [10]
-    uint32_t r = (l * (257*255) - A * MAX(MIN(MIN(k - 3*255, 9*255 - k), 255), -255)) * a / (255*255*255);
+  #define f(N) (uint8_t) ((l * (257*255) - A * MAX(MIN(MIN(k(N, h) - 3*255, 9*255 - k(N, h)), 255), -255)) * a / (255*255*255))
 #endif
-    return (uint8_t) r;
-  }
 
   uint32_t result = (((((a << 8) + f(0)) << 8) + f(8)) << 8) + f(4);
+
   DBV(C, "ahsl2argb(): optInvert %d, optAlpha %d, %x %x %x %x -> %x", !!(windowBits & 128), optAlpha, a, h, s, l, result);
+
   return result;
 }
+
 
 #define GRADIENTS (MAXMEM * 2)
 GC bgColor, transparentColor;
@@ -583,7 +587,7 @@ void printParam(void)
   plotGotoXY(DX + 6, DY + 5);
   plotSetColors(5, 0); // Color 5 is like 1 (green) but causes immediate update.
   if (strlen(resultStr))
-    sprintf(tempStr, resultStr);
+    sprintf(tempStr, "%s", resultStr);
   else
     sprintf(tempStr, "%s%s", inputName, inputStr);
 
@@ -1142,6 +1146,7 @@ void instrumentReset (int cold)
   {
     startHz = xHzMin;
     spanHz = xHzMax - xHzMin;
+    (spanHz < 0.1 * kHz) ? (units = Hz) : (units = kHz);
     stepAbs = stepRel = 1.0;
     crtRayStyle = 0;
     for (int ch = 0; ch < MAXCH; ch++)
@@ -1176,15 +1181,15 @@ void processMouse(int x, int y, int which)
   }
 }
 
+void inputMode (int m, char* str)
+{
+  menu = m;
+  strcpy(inputName, str);
+  inputStr[0] = resultStr[0] = '\0';
+}
+
 void processKeyboard (int rk)
 {
-  void inputMode (int m, char* str)
-  {
-    menu = m;
-    strcpy(inputName, str);
-    inputStr[0] = resultStr[0] = '\0';
-  }
-
   rk = rk + 256 * menuPage;
 
   DBV(X, "Menu %d Key %d (%d)", menu, rk % 256, rk);
@@ -1579,7 +1584,94 @@ disk_thread (void *arg)
   info->status = 0;
   jackPorts = info->channels;
 
-  void fftExecuteAndProcessOneChannel(int ch)
+// Clang is against nested functions, so it's in macro form, sadly.
+#define readSpaceAndDrawProgressbar()                                                 \
+  {                                                                                   \
+    if ((info->can_capture) && (! programExit))                                       \
+    {                                                                                 \
+      readSpace = jack_ringbuffer_read_space (rb);                                    \
+      chunksToRead = readSpace / chunkSize;                                           \
+                                                                                      \
+      if ((! (windowBits & (16 + 64))) && (fftsPerSecond < 1))                        \
+      {                                                                               \
+        int w = 3;                                                                    \
+        XFillRectangle(dpy, pm, bgColor, DX, DY - mkrSize - w, xSize, w);             \
+        float rollPos = fmod((rollPhase + readSpace / (float)chunkSize) / roll, 1.0); \
+                                                                                      \
+        for (int i = 0; i < (rollPos * xSize); i++)                                   \
+          XDrawPoint(dpy, pm, fontColor[2], DX + i, DY - mkrSize - i % w - 1);        \
+                                                                                      \
+        XFlushArea(DX, DY - mkrSize - w, xSize, w);                                   \
+      }                                                                               \
+    }                                                                                 \
+    else                                                                              \
+      chunksToRead = 0;                                                               \
+  }
+
+  if (optOpengl) {
+    if (! glXMakeCurrent(dpy, win, glcontext))
+      ERR(O, "glXMakeCurrent() failed!");
+
+    // glEnable(GL_POINT_SMOOTH);
+    // glEnable(GL_LINE_SMOOTH);
+    // glEnable(GL_MULTISAMPLE);
+    // glEnable(GL_MULTISAMPLE_ARB);
+
+    glEnable(GL_BLEND);
+    glViewport(0, 0, winW, winH);
+  }
+
+  // Main loop.
+  while (1)
+  {
+    lowCpu = 0;
+    goto start;
+
+    while (chunksToRead > 0)
+    {
+      discardCurrentFft = 0;
+
+      uint64_t gap = bufSize - bufPointer; // bytes before end of buf
+
+      if (gap < chunkSize * chunksToRead)
+      {
+        jack_ringbuffer_read (rb, buf + bufPointer, gap);
+        bufPointer = chunkSize * chunksToRead - gap;
+        jack_ringbuffer_read (rb, buf + 0, bufPointer);
+      }
+      else if (gap == chunkSize * chunksToRead)
+      {
+        jack_ringbuffer_read (rb, buf + bufPointer, chunkSize * chunksToRead);
+        bufPointer = 0;
+      }
+      else
+      {
+        jack_ringbuffer_read (rb, buf + bufPointer, chunkSize * chunksToRead);
+        bufPointer = bufPointer + chunkSize * chunksToRead;
+      }
+
+      rollPhase = (rollPhase + chunksToRead) % roll;
+
+      bufReadoutPointer = bufPointer - fftSize * jackPorts * sample_size_4bytes;
+      if (bufReadoutPointer < 0)
+        bufReadoutPointer = bufReadoutPointer + bufSize;
+
+      planNum = fftSizeK - MINFFTK;
+
+      if ((memAddScheduled) || ((phosphor > 0) && (phosphor < MAXPHOSPHOR)))
+      {
+        memCurr = (memCurr + 1) % MAXMEM;
+
+        if (memAddScheduled)
+          memQty = MIN(memQty + 1, memorySlots + 1);
+
+        memAddScheduled = 0;
+      }
+
+      for (int ch = 0; ch < channels; ch++)
+      {
+        // fftExecuteAndProcessOneChannel(ch, buf, planNum, bufReadoutPointer, bufSizeInSamples);
+  // void fftExecuteAndProcessOneChannel(int ch, void *buf, int planNum, int64_t bufReadoutPointer, uint64_t bufSizeInSamples)
   {
     ch = ch % MAXCH;
     inmin[ch] = 0.0;
@@ -1723,9 +1815,11 @@ disk_thread (void *arg)
 
       if (optType)
         if (optIQ)
-          kfr_dft_execute_f64(plan_kfr[planNum], fftout[ch][0], fftin[ch][0], tmp);
+          // kfr_dft_execute_f64(plan_kfr[planNum], fftout[ch][0], fftin[ch][0], tmp); // This one is for `gcc`...
+          kfr_dft_execute_f64(plan_kfr[planNum], (_Complex double *)fftout[ch][0], (_Complex double *)fftin[ch][0], tmp); // ...and this one for `clang`
         else
-          kfr_dft_real_execute_f64(plan_kfr_real[planNum], fftout[ch][0], fftinR[ch], tmp);
+          // kfr_dft_real_execute_f64(plan_kfr_real[planNum], fftout[ch][0], fftinR[ch], tmp); // This one is for `gcc`...
+          kfr_dft_real_execute_f64(plan_kfr_real[planNum], (_Complex double *)fftout[ch][0], fftinR[ch], tmp);  // ...and this one for `clang`
       else
         fftw_execute(plan_fftw[planNum][ch]);
 
@@ -1747,18 +1841,18 @@ disk_thread (void *arg)
     double coe0 = 10.0 * intDbScale / (double)(2 - isDbPwr);
     double coe1 = log10(1.0 / ((double)fftSize / (double)(2 - optIQ))) * 2.0 + log10(1.0 / winNFbins);
 
-    void storeBin(int bin, double power)
-    {
-      int fftDb = MAX(roundf(coe0 * (power + coe1)), NODATA + 1);
-      // Our video filter is per-point IIR LPF.
-      // Note: video filter can't work when stopped; it is run time thing.
-      if ((vbw > 1) && (vbwContinue))
-        data[memCurr][bin][ch] = (fftDb + data[memPrev][bin][ch] * (vbw - 1)) / (float)vbw;
-      else if ((vbw == 0) && (vbwContinue)) // Max hold
-        data[memCurr][bin][ch] = MAX(fftDb, data[memPrev][bin][ch]);
-
-      else
-        data[memCurr][bin][ch] = fftDb;
+// Clang is against nested functions, so it's in macro form, sadly.
+#define storeBin(bin, power)                                                           \
+    {                                                                                  \
+      int fftDb = MAX(roundf(coe0 * (power + coe1)), NODATA + 1);                      \
+      if ((vbw > 1) && (vbwContinue))                                                  \
+        /* Our video filter is per-point IIR LPF. Note: video filter can't work when stopped; it is run time thing. */ \
+        data[memCurr][bin][ch] = (fftDb + data[memPrev][bin][ch] * (vbw - 1)) / (float)vbw; \
+      else if ((vbw == 0) && (vbwContinue))  /* Max hold  */                           \
+        data[memCurr][bin][ch] = MAX(fftDb, data[memPrev][bin][ch]);                   \
+                                                                                       \
+      else                                                                             \
+        data[memCurr][bin][ch] = fftDb;                                                \
     }
 
     // It allow even more correct markers near center, while anyway they will be approximate unless zoomed-in well (narrower span to exact view).
@@ -1828,92 +1922,6 @@ disk_thread (void *arg)
       storeBin(lastUsedBin, fftPowerBin);
   }
 
-  void readSpaceAndDrawProgressbar()
-  {
-    if ((info->can_capture) && (! programExit))
-    {
-      readSpace = jack_ringbuffer_read_space (rb);
-      chunksToRead = readSpace / chunkSize;
-
-      if ((! (windowBits & (16 + 64))) && (fftsPerSecond < 1))
-      {
-        int w = 3;
-        XFillRectangle(dpy, pm, bgColor, DX, DY - mkrSize - w, xSize, w);
-        float rollPos = fmod((rollPhase + readSpace / (float)chunkSize) / roll, 1.0);
-
-        for (int i = 0; i < (rollPos * xSize); i++)
-          XDrawPoint(dpy, pm, fontColor[2], DX + i, DY - mkrSize - i % w - 1);
-
-        XFlushArea(DX, DY - mkrSize - w, xSize, w);
-      }
-    }
-    else
-      chunksToRead = 0;
-  }
-
-  if (optOpengl) {
-    if (! glXMakeCurrent(dpy, win, glcontext))
-      ERR(O, "glXMakeCurrent() failed!");
-
-    // glEnable(GL_POINT_SMOOTH);
-    // glEnable(GL_LINE_SMOOTH);
-    // glEnable(GL_MULTISAMPLE);
-    // glEnable(GL_MULTISAMPLE_ARB);
-
-    glEnable(GL_BLEND);
-    glViewport(0, 0, winW, winH);
-  }
-
-  // Main loop.
-  while (1)
-  {
-    lowCpu = 0;
-    goto start;
-
-    while (chunksToRead > 0)
-    {
-      discardCurrentFft = 0;
-
-      uint64_t gap = bufSize - bufPointer; // bytes before end of buf
-
-      if (gap < chunkSize * chunksToRead)
-      {
-        jack_ringbuffer_read (rb, buf + bufPointer, gap);
-        bufPointer = chunkSize * chunksToRead - gap;
-        jack_ringbuffer_read (rb, buf + 0, bufPointer);
-      }
-      else if (gap == chunkSize * chunksToRead)
-      {
-        jack_ringbuffer_read (rb, buf + bufPointer, chunkSize * chunksToRead);
-        bufPointer = 0;
-      }
-      else
-      {
-        jack_ringbuffer_read (rb, buf + bufPointer, chunkSize * chunksToRead);
-        bufPointer = bufPointer + chunkSize * chunksToRead;
-      }
-
-      rollPhase = (rollPhase + chunksToRead) % roll;
-
-      bufReadoutPointer = bufPointer - fftSize * jackPorts * sample_size_4bytes;
-      if (bufReadoutPointer < 0)
-        bufReadoutPointer = bufReadoutPointer + bufSize;
-
-      planNum = fftSizeK - MINFFTK;
-
-      if ((memAddScheduled) || ((phosphor > 0) && (phosphor < MAXPHOSPHOR)))
-      {
-        memCurr = (memCurr + 1) % MAXMEM;
-
-        if (memAddScheduled)
-          memQty = MIN(memQty + 1, memorySlots + 1);
-
-        memAddScheduled = 0;
-      }
-
-      for (int ch = 0; ch < channels; ch++)
-      {
-        fftExecuteAndProcessOneChannel(ch);
         readSpaceAndDrawProgressbar();
         if (! stopped)
           processMessages();
@@ -2064,36 +2072,36 @@ run_disk_thread (jack_thread_info_t *info)
 }
 
 
+// Precision tested, no any benefit from 'long double' yet.
+// NOTE All windows should have unity gain. Use CALC_GAIN if in doubt.
+// double windowSine(double i, double s) {
+//   return (sin(1.0 * M_PI * i / (s - 1.0)) * (M_PI / 2.0)); }
+
+double windowBlackman(double ang) {
+  return 0.42/0.42 - 0.50/0.42  * cos(2.0 * ang)
+        + 0.08/0.42  * cos(4.0 * ang) ; }
+
+double windowHanning(double ang) {
+  return 1.0 - cos(2.0 * ang); }
+
+double windowFlatTop(double ang) { // 'FTSRS' window
+  return 1.0  - 1.93  * cos(2.0 * ang)
+        + 1.29  * cos(4.0 * ang)
+        - 0.388 * cos(6.0 * ang)
+        + 0.028 * cos(8.0 * ang) ; }
+
+double windowHFT144D(double ang) {
+  return 1.0  - 1.96760033 * cos( 2.0 * ang)
+        + 1.57983607 * cos( 4.0 * ang)
+        - 0.81123644 * cos( 6.0 * ang)
+        + 0.22583558 * cos( 8.0 * ang)
+        - 0.02773848 * cos(10.0 * ang)
+        + 0.00090360 * cos(12.0 * ang) ; }
+
 // #define CALC_GAIN 3 // Set to window number of interest.
 
-// Precision tested, no any benefit from 'long double' yet.
 void windowfunc_calc(int planNum, uint64_t size)
 {
-  // NOTE All windows should have unity gain. Use CALC_GAIN if in doubt.
-  // double windowSine(double i, double s) {
-  //   return (sin(1.0 * M_PI * i / (s - 1.0)) * (M_PI / 2.0)); }
-
-  double windowBlackman(double ang) {
-    return 0.42/0.42 - 0.50/0.42  * cos(2.0 * ang)
-          + 0.08/0.42  * cos(4.0 * ang) ; }
-
-  double windowHanning(double ang) {
-    return 1.0 - cos(2.0 * ang); }
-
-  double windowFlatTop(double ang) { // 'FTSRS' window
-    return 1.0  - 1.93  * cos(2.0 * ang)
-          + 1.29  * cos(4.0 * ang)
-          - 0.388 * cos(6.0 * ang)
-          + 0.028 * cos(8.0 * ang) ; }
-
-  double windowHFT144D(double ang) {
-    return 1.0  - 1.96760033 * cos( 2.0 * ang)
-          + 1.57983607 * cos( 4.0 * ang)
-          - 0.81123644 * cos( 6.0 * ang)
-          + 0.22583558 * cos( 8.0 * ang)
-          - 0.02773848 * cos(10.0 * ang)
-          + 0.00090360 * cos(12.0 * ang) ; }
-
 #ifdef CALC_GAIN
   double windowgain = 0;
 #endif
@@ -2610,7 +2618,7 @@ int main(int argc, char *argv[])
     if ((ports[i] = jack_port_register (thread_info.client, portName[i], JACK_DEFAULT_AUDIO_TYPE, JackPortIsInput, 0)) == 0)
       ERR(J, "Cannot register input port '%s'!", portName[i]);
 
-    sprintf(portName[i], argv[optind + i]);
+    sprintf(portName[i], "%s", argv[optind + i]);
     DBV(J, "portName[%d] = `%s`", i, portName[i]);
 
     if (jack_connect (thread_info.client, portName[i], jack_port_name (ports[i])))
@@ -2622,8 +2630,6 @@ int main(int argc, char *argv[])
   pthread_create (&thread_info.thread_id, NULL, disk_thread, &thread_info);
 
 // Init internals
-  (spanHz < 0.1 * kHz) ? (units = Hz) : (units = kHz);
-
   maxHz = sampleRate / 2;
   minHz = optIQ ? -(int)maxHz : 0;
   minSpanHz = xGrids;
