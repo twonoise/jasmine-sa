@@ -331,7 +331,7 @@ So i prepare some filters to know there is no other leaks, aside from GLs.
 
 * OpenGL with integrated GPU undocumented troubles
 
-Due to unknown reason, there is not possible to use **MSAA** and **Alpha** (**transparency**) at same time using at least Intel and AMD _integrated_ GPUs. See [SO Deleted post](https://github.com/twonoise/jasmine-sa/edit/main/README.md#so-deleted-post) below.
+Due to unknown reason, there is not possible to use **MSAA** and **Alpha** (**transparency**) at same time using at least Intel and AMD _integrated_ GPUs. See [SO Deleted post](https://github.com/twonoise/jasmine-sa/blob/main/README.md#so-deleted-post) below.
 
 * Ourself bugs
 
