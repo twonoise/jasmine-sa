@@ -327,7 +327,7 @@ Fixed by me, as seen there, and also works well so far.
     Occurs only if openGL mode stated at our command line, so there is no leak using `X11` even when compiled with `openGL`. Note that either _all_ openGL apps, like `glxgears`, have some leaks in order of 200...300 kb (_i talk about Linux only_); or, there are `valgrind` false starts. [^6] (It is so-so everywhere, still no exact answer).<br>
 So i prepare some filters to know there is no other leaks, aside from GLs.
 
-    `clang ./jasmine-sa.c -Wshadow -Wall -Werror -g -O2 -ffast-math -march=native -lm -lbsd -ljack -lX11 -lXrender -lXss -lGL -lfftw3_threads -lfftw3 -lkfr_capi -o jasmine-sa && echo -e '{\n1\nMemcheck:Leak\n...\nsrc:dl-open.c:900\n}\n{\n2\nMemcheck:Leak\n...\nsrc:dl-init.c:121\n}\n' > /tmp/s && valgrind --leak-check=full --show-leak-kinds=all --suppressions=/tmp/s ./jasmine-sa -k 16 system:capture_1 -e -O -M 0 -A 1 -o 0`
+    `echo -e '{\n1\nMemcheck:Leak\n...\nsrc:dl-open.c:900\n}\n{\n2\nMemcheck:Leak\n...\nsrc:dl-init.c:121\n}\n' > /tmp/s && valgrind --leak-check=full --show-leak-kinds=all --suppressions=/tmp/s ./jasmine-sa -k 16 system:capture_1 -e -O -M 0 -A 1 -o 0`
 
     `gcc (...same...)`
 
