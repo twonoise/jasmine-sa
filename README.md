@@ -212,8 +212,8 @@ While, for **Archlinux**, at least, there is package, with C API enabled since A
 (_add_ `-fopt-info-vec-optimized` _key for some SIMD info_)
 
     gcc ./jasmine-sa.c -Wshadow -Wall -Werror -g -O2 -ffast-math -march=native -lm -lbsd -ljack -lX11 -lXrender -lXss -lGL -lfftw3_threads -lfftw3 -lkfr_capi -o jasmine-sa
-	
-or 
+
+or
 
 	clang (...)
 
@@ -303,20 +303,49 @@ But, yes, there is a "bug" for Intel GPU (or driver?) which blocks both **MSAA**
 >[!Caution]
 >P.S. _Added_: AMD integrated GPU was tested. It (or driver?) also have this "bug". So, currently, both mainstream _integrated_ GPUs are affected.
 
+Please check bugs section below.
 
-TESTING
--------
-_See also man page._
 
-Test for memory leaks. Note that either _all_ openGL apps have some leaks in order of 200...300 kb (_i talk about Linux only_); or, there are `valgrind` false starts. [^6] (It is so-so everywhere, still no exact answer).<br>
-So i prepare some filters.
+KNOWN BUGS (Current)
+--------------------
+There are three sorts of: memory leaks, openGL w/ integrated GPU oddities, and our code itself related.
 
-    gcc -ggdb3 -Wall -lm -ljack -lX11 -lXrender -lXss -lGL -lfftw3_threads -lfftw3 -o jasmine-sa ./jasmine-sa.c && echo -e '{\n1\nMemcheck:Leak\n...\nsrc:dl-open.c:874\n}\n{\n2\nMemcheck:Leak\n...\nsrc:dl-init.c:121\n}\n' > /tmp/s && valgrind --leak-check=full --show-leak-kinds=all --suppressions=/tmp/s ./jasmine-sa -k 16 system:capture_1 -e -O -M 0 -A 1 -o 0
+* Memory leaks
+* * Compile time leaks (can't be controlled from our code, and reproduceable with empty body code)
+* * * [JACK 96 bytes leak](https://github.com/jackaudio/jack2/issues/1001).
+
+Can be fixed with @JWZ1996 patch provided there. Tested by me, works well so far.
+
+* * * [KFR 73728 bytes leak](https://github.com/kfrlib/kfr/discussions/274).
+
+Fixed by me, as seen there, and also works well so far.
+
+* * Run time leaks (can be depend on our code, in terms of, at least, there is no leak with empty body code)
+
+* * * **OpenGL memory leaks**. Occurs only if openGL mode stated at our command line, so there is no leak using `X11` even when compiled with `openGL`. Note that either _all_ openGL apps, like `glxgears`, have some leaks in order of 200...300 kb (_i talk about Linux only_); or, there are `valgrind` false starts. [^6] (It is so-so everywhere, still no exact answer).<br>
+So i prepare some filters to know there is no other leaks, aside from GLs.
+
+    `clang ./jasmine-sa.c -Wshadow -Wall -Werror -g -O2 -ffast-math -march=native -lm -lbsd -ljack -lX11 -lXrender -lXss -lGL -lfftw3_threads -lfftw3 -lkfr_capi -o jasmine-sa && echo -e '{\n1\nMemcheck:Leak\n...\nsrc:dl-open.c:900\n}\n{\n2\nMemcheck:Leak\n...\nsrc:dl-init.c:121\n}\n' > /tmp/s && valgrind --leak-check=full --show-leak-kinds=all --suppressions=/tmp/s ./jasmine-sa -k 16 system:capture_1 -e -O -M 0 -A 1 -o 0`
+
+    `gcc (...same...)`
+
+* OpenGL with integrated GPU undocumented troubles
+
+Due to unknown reason, there is not possible to use **MSAA** and **Alpha** (**transparency**) at same time using at least Intel and AMD _integrated_ GPUs. See [SO Deleted post](https://github.com/twonoise/jasmine-sa/edit/main/README.md#so-deleted-post) below.
+
+* Ourself bugs
+
+* * There is impossible to enter negative center frequency value, as `Minus` key already used, together with `Plus`, for panning. However, all others, like markers, panning and messages, should work with negative values.
+
+* * The last (rightmost) point of spectrogram is displayed incorrectly, work in progress on it.
 
 
 KNOWN BUGS
 ----------
-**1:** There is 73824 bytes leak, 96 jack's + 73728 from linking process itself, and it is same with either our full working code, as well as this empty code:
+> [!Note]
+> Obsolete and archived section, keeps other references to it working.
+
+There is 73824 bytes leak, 96 jack's + 73728 from linking process itself, and it is same with either our full working code, as well as this empty code:
 
     echo 'int main() { return 0; }' | gcc -lkfr_capi -ljack -o /tmp/test -xc - && valgrind /tmp/test
 
@@ -326,11 +355,6 @@ Also not worked:
 * Solution provided at JACK issue above: It happily fixes 96 bytes JACK memory leak, but not linking one.
 * `gcc -fsanitize=address -fno-omit-frame-pointer -g`, as well as other than `valgrind` memleak detectors and ways, but these all are for non-empty C code body.
 * Downgrade JACK to 1.9.12 from 2019 (oldest the Arch's repos have).
-
-
-**2:** There is impossible to enter negative center frequency value, as `Minus` key already used, together with `Plus`, for panning. However, all others, like markers, panning and messages, should work with negative values.
-
-**3:** The last (rightmost) point of spectrogram is displayed incorrectly, work in progress on it.
 
 
 CREDITS
