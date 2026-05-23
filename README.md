@@ -312,18 +312,19 @@ There are three sorts of: memory leaks, openGL w/ integrated GPU oddities, and o
 
 * Memory leaks
   
-* * Compile time leaks (can't be controlled from our code, and reproduceable with empty body code)
-* * * [JACK 96 bytes leak](https://github.com/jackaudio/jack2/issues/1001).
-
+  * Compile time leaks (can't be controlled from our code, and reproduceable with empty body code)
+    * [JACK 96 bytes leak](https://github.com/jackaudio/jack2/issues/1001).<br>
 Can be fixed with @JWZ1996 patch provided there. Tested by me, works well so far.
 
-* * * [KFR 73728 bytes leak](https://github.com/kfrlib/kfr/discussions/274).
-
+    * [KFR 73728 bytes leak](https://github.com/kfrlib/kfr/discussions/274).<br>
 Fixed by me, as seen there, and also works well so far.
 
-* * Run time leaks (can be depend on our code, in terms of, at least, there is no leak with empty body code)
+  * Run time leaks (can be depend on our code, in terms of, at least, there is no leak with empty body code)
 
-* * * **OpenGL memory leaks**. Occurs only if openGL mode stated at our command line, so there is no leak using `X11` even when compiled with `openGL`. Note that either _all_ openGL apps, like `glxgears`, have some leaks in order of 200...300 kb (_i talk about Linux only_); or, there are `valgrind` false starts. [^6] (It is so-so everywhere, still no exact answer).<br>
+    * **OpenGL memory leaks**.<br>
+    > Do not mix with openGL integrated GPU issue below.
+
+    Occurs only if openGL mode stated at our command line, so there is no leak using `X11` even when compiled with `openGL`. Note that either _all_ openGL apps, like `glxgears`, have some leaks in order of 200...300 kb (_i talk about Linux only_); or, there are `valgrind` false starts. [^6] (It is so-so everywhere, still no exact answer).<br>
 So i prepare some filters to know there is no other leaks, aside from GLs.
 
     `clang ./jasmine-sa.c -Wshadow -Wall -Werror -g -O2 -ffast-math -march=native -lm -lbsd -ljack -lX11 -lXrender -lXss -lGL -lfftw3_threads -lfftw3 -lkfr_capi -o jasmine-sa && echo -e '{\n1\nMemcheck:Leak\n...\nsrc:dl-open.c:900\n}\n{\n2\nMemcheck:Leak\n...\nsrc:dl-init.c:121\n}\n' > /tmp/s && valgrind --leak-check=full --show-leak-kinds=all --suppressions=/tmp/s ./jasmine-sa -k 16 system:capture_1 -e -O -M 0 -A 1 -o 0`
@@ -336,31 +337,29 @@ Due to unknown reason, there is not possible to use **MSAA** and **Alpha** (**tr
 
 * Ourself bugs
 
-* * There is impossible to enter negative center frequency value, as `Minus` key already used, together with `Plus`, for panning. However, all others, like markers, panning and messages, should work with negative values.
+  * There is impossible to enter negative center frequency value, as `Minus` key already used, together with `Plus`, for panning. However, all others, like markers, panning and messages, should work with negative values.
 
-* * The last (rightmost) point of spectrogram is displayed incorrectly, work in progress on it.
+  * The last (rightmost) point of spectrogram is displayed incorrectly, work in progress on it.
  
 * Unknown origin bugs
   
-* * If colors are looks lean or wrong, there is possibly over-optimized compiler job like `-O3`. Please check using `-O2` and report if it is not helps. <br>
+  * If colors are looks lean or wrong, there is possibly over-optimized compiler job like `-O3`. Please check using `-O2` and report if it is not helps. <br>
 There is [8-bit integer -O3-related bug](https://gist.github.com/twonoise/940c979ad3d0d9fc59fdefa5edd82a08) i discover, and can't report it because do not know the place for report, as it is reproduceable with both `gcc -O3` and `clang -O3`.
 
 KNOWN BUGS
 ----------
 > [!Note]
-> Obsolete and archived section, keeps other references to it working.
-
-There is 73824 bytes leak, 96 jack's + 73728 from linking process itself, and it is same with either our full working code, as well as this empty code:
-
-    echo 'int main() { return 0; }' | gcc -lkfr_capi -ljack -o /tmp/test -xc - && valgrind /tmp/test
-
-It is not reported, because I am do not know where to report, as it is some rare combo of two: `-lkfr_capi` alone is clear, and, `-ljack` alone is only 96 bytes lost, [which is reported](https://github.com/jackaudio/jack2/issues/1001). So there are at least three places to talk: _JACK_, _KFR_, and _Valgrind_ itself.
-
-Also not worked:
-* Solution provided at JACK issue above: It happily fixes 96 bytes JACK memory leak, but not linking one.
-* `gcc -fsanitize=address -fno-omit-frame-pointer -g`, as well as other than `valgrind` memleak detectors and ways, but these all are for non-empty C code body.
-* Downgrade JACK to 1.9.12 from 2019 (oldest the Arch's repos have).
-
+> Obsolete and archived section, it's purpose is to keep other references to it working.
+ 
+> There is 73824 bytes leak, 96 jack's + 73728 from linking process itself, and it is same with either our full working code, as well as this empty code:
+> 
+>     echo 'int main() { return 0; }' | gcc -lkfr_capi -ljack -o /tmp/test -xc - && valgrind /tmp/test
+> 
+> It is not reported, because I am do not know where to report, as it is some rare combo of two: `-lkfr_capi` alone is clear, and, `-ljack` alone is only 96 bytes lost, [which is reported](https://github.com/jackaudio/jack2/issues/1001). So there are at least three places to talk: _JACK_, _KFR_, and _Valgrind_ itself.
+> Also not worked:
+> * Solution provided at JACK issue above: It happily fixes 96 bytes JACK memory leak, but not linking one.
+> * `gcc -fsanitize=address -fno-omit-frame-pointer -g`, as well as other than `valgrind` memleak detectors and ways, but these all are for non-empty C code body.
+> * Downgrade JACK to 1.9.12 from 2019 (oldest the Arch's repos have).
 
 CREDITS
 -------
