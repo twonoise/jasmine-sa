@@ -242,7 +242,7 @@ int memQty;
 #define kHz 1000L
 #define MHz 1000000L
 
-int64_t startHz, spanHz, minHz, maxHz, minSpanHz, maxSpanHz;
+int64_t startHz, spanHz, minCenterHz, maxCenterHz, minSpanHz, maxSpanHz;
 
 int menuPage;
 int menu;
@@ -1101,7 +1101,7 @@ void newFft(int forceClear)
 
 void setCenter (int new_value)
 {
-  int centerHz = FIT(new_value, minHz, maxHz);
+  int centerHz = FIT(new_value, minCenterHz, maxCenterHz);
   startHz = centerHz - spanHz / 2;
   sprintf(resultStr, "Center: %g %s", centerHz DUNITS2STR);
   newFft(0); // For sampleNum, at least.
@@ -2630,10 +2630,11 @@ int main(int argc, char *argv[])
   pthread_create (&thread_info.thread_id, NULL, disk_thread, &thread_info);
 
 // Init internals
-  maxHz = sampleRate / 2;
-  minHz = optIQ ? -(int)maxHz : 0;
+  maxCenterHz = MAX(sampleRate, xHzMax - xHzMin) / 2;
+  minCenterHz = optIQ ? -(int)maxCenterHz : 0;
   minSpanHz = xGrids;
-  maxSpanHz = sampleRate;
+  maxSpanHz = MAX(sampleRate, xHzMax - xHzMin) * (optIQ + 1);
+  DBV(P, "xHzMin %d, xHzMax %d, minCenterHz %ld, maxCenterHz %ld, minSpanHz %ld, maxSpanHz %ld", xHzMin, xHzMax, minCenterHz, maxCenterHz, minSpanHz, maxSpanHz);
 
   instrumentReset(1);
   if (! (windowBits & 16))
