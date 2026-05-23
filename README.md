@@ -311,6 +311,7 @@ KNOWN BUGS (Current)
 There are three sorts of: memory leaks, openGL w/ integrated GPU oddities, and our code itself related.
 
 * Memory leaks
+  
 * * Compile time leaks (can't be controlled from our code, and reproduceable with empty body code)
 * * * [JACK 96 bytes leak](https://github.com/jackaudio/jack2/issues/1001).
 
@@ -338,7 +339,11 @@ Due to unknown reason, there is not possible to use **MSAA** and **Alpha** (**tr
 * * There is impossible to enter negative center frequency value, as `Minus` key already used, together with `Plus`, for panning. However, all others, like markers, panning and messages, should work with negative values.
 
 * * The last (rightmost) point of spectrogram is displayed incorrectly, work in progress on it.
-
+ 
+* Unknown origin bugs
+  
+* * If colors are looks lean or wrong, there is possibly over-optimized compiler job like `-O3`. Please check using `-O2` and report if it is not helps. <br>
+There is [8-bit integer -O3-related bug](https://gist.github.com/twonoise/940c979ad3d0d9fc59fdefa5edd82a08) i discover, and can't report it because do not know the place for report, as it is reproduceable with both `gcc -O3` and `clang -O3`.
 
 KNOWN BUGS
 ----------
