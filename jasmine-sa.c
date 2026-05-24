@@ -187,7 +187,8 @@ int defPhospor = 0;
 int windowBits = 0;
 
 int optType = 0;
-int maxFFTK = 20;
+int minFftK = 13;
+int maxFftK = 20;
 int maxRoll = 16;
 int optIQ = 0;
 int optShowEnob = 0;
@@ -340,7 +341,8 @@ uint64_t fftSizeK, fftOldSizeK;
 fftw_complex *fftin[MAXCH];
 double *fftinR[MAXCH], inmin[MAXCH], inminAbsNonzero[MAXCH], inmax[MAXCH];
 
-#define MINFFTK 13
+#define MAXFPS 50
+#define MINFFTK 6
 #define MAXFFTK 25  // 31 is max.
 #define MAXPLANS (MAXFFTK - MINFFTK + 1)
 fftw_complex *fftout[MAXCH];
@@ -1035,11 +1037,10 @@ void newFft(int forceClear)
     ERR(F, "spanHz == 0");
 
 // These are experimental values, they should be adjusted due to variation in CPU && GPU power for particular system for best picture && eliminate low CPU warning. Also will differ when `fftw3` vs `kfr-fft` selected.
-#define MAXFPS 50
 #define MAXRBW -4
 #define MINRBW 8
 
-  rbwLogMin = MAX((int) log2(spanHz / (float)(xSize * 2 * MAXFPS)), MAXRBW);
+  rbwLogMin = MAX(floor(log2(spanHz / (float)(xSize * 2 * MAXFPS))), MAXRBW);
   rbwLogMax = MIN(rbwLogMin + 10, MINRBW);
 
   rbwLog = FIT(rbwLog, rbwLogMin, rbwLogMax);
@@ -1052,7 +1053,7 @@ void newFft(int forceClear)
   if (! stopped)
     fftSizeK = ceil(log2(sampleRate * xSize * 2.0 * rbw / (float)spanHz - 1.0));
 
-  fftSizeK = FIT(fftSizeK, MINFFTK, maxFFTK);
+  fftSizeK = FIT(fftSizeK, minFftK, maxFftK);
 
   fftSize = 1UL << fftSizeK;
   fftPlotTime = fftSize / (float)sampleRate;
@@ -1571,7 +1572,7 @@ disk_thread (void *arg)
   jack_thread_info_t *info = (jack_thread_info_t *) arg;
   // It should be also not less than periodsize which we hope can't be > 64 kb.
   // JackConstants.h says BUFFER_SIZE_MAX 8192; qjackctl is 4096.
-  uint64_t bufSize = (1 << MAX(maxFFTK, 16)) * jackPorts * sample_size_4bytes * 1;
+  uint64_t bufSize = (1 << MAX(maxFftK, 16)) * jackPorts * sample_size_4bytes * 1;
   void *buf = calloc (bufSize, 1);
   uint64_t bufPointer = 0;
   uint64_t readSpace;
@@ -1656,7 +1657,7 @@ disk_thread (void *arg)
       if (bufReadoutPointer < 0)
         bufReadoutPointer = bufReadoutPointer + bufSize;
 
-      planNum = fftSizeK - MINFFTK;
+      planNum = fftSizeK - minFftK;
 
       if ((memAddScheduled) || ((phosphor > 0) && (phosphor < MAXPHOSPHOR)))
       {
@@ -2316,7 +2317,7 @@ int main(int argc, char *argv[])
         break;
 
       case 't':     optType = FIT(ul, 0, 1);    break;
-      case 'k':     maxFFTK = FIT(ul, MINFFTK, MAXFFTK); break;
+      case 'k':     maxFftK = FIT(ul, MINFFTK, MAXFFTK); break;
       case 'r':     maxRoll = FIT(ul, 1, 256);  break;
       case 'j':        jobs = FIT(ul, 1, 4);    break;
       case 'p':  defPhospor = FIT(ul, 0, 16);   break;
@@ -2401,9 +2402,9 @@ int main(int argc, char *argv[])
   sampleRate = jack_get_sample_rate(client);
   uint64_t periodsize = jack_get_buffer_size(client);
 // It is important to keep arrays as small as possible to minimize memory page switch latency effects.
-  uint64_t rb_size = (1UL << maxFFTK) * jackPorts / sample_size_4bytes * 2;
+  uint64_t rb_size = (1UL << maxFftK) * jackPorts / sample_size_4bytes * 2;
 
-  MSG(J, "Connected, sampleRate %ld, buf (period) %ld, channels %ld (%ld), rb_size %ld.",  sampleRate, periodsize, channels, jackPorts, rb_size);
+  MSG(J, "%ld S/s, period %ld, channels %ld (%ld), rb_size %ld.",  sampleRate, periodsize, channels, jackPorts, rb_size);
 
   jack_thread_info_t thread_info;
   memset (&thread_info, 0, sizeof (thread_info));
@@ -2428,24 +2429,25 @@ int main(int argc, char *argv[])
   {
     if (optIQ)
     {
-      fftin[i]  = fftw_alloc_complex(1UL << maxFFTK);
-      fftout[i] = fftw_alloc_complex(1UL << maxFFTK);
+      fftin[i]  = fftw_alloc_complex(1UL << maxFftK);
+      fftout[i] = fftw_alloc_complex(1UL << maxFftK);
     }
     else
     {
       // The input is n real numbers, while the output is n/2+1 complex numbers. [6]
-      fftinR[i]  = fftw_alloc_real(1UL << maxFFTK);
+      fftinR[i]  = fftw_alloc_real(1UL << maxFftK);
       // fftw_complex is double.
-      fftout[i] = fftw_alloc_complex((1UL << maxFFTK) / 2 + 1);
+      fftout[i] = fftw_alloc_complex((1UL << maxFftK) / 2 + 1);
     }
   }
 
-  plans = (maxFFTK - MINFFTK + 1);
+  minFftK = MAX(MINFFTK, floor(log2(sampleRate / (float)MAXFPS)) + 1);
+  plans = (maxFftK - minFftK + 1);
   uint64_t tmpSize = 0;
 
   for (int p = 0; p < plans; p++)
   {
-    fftSizeK = MINFFTK + p;
+    fftSizeK = minFftK + p;
     uint64_t size = 1UL << fftSizeK; // should be < INT_MAX
 
     DBG(F, "Plan calculate for %ld points, 4 windows.", size);
