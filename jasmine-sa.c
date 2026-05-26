@@ -2376,7 +2376,8 @@ int main(int argc, char *argv[])
   jackPorts = channels * (optIQ + 1);
 
   if (channels <= 0)
-    ERR(J, "No ports given. Use 'jack_lsp -p | grep -B 1 output' to find some.");
+    ERR(J, "Please give at least %d port(s).\n"
+           " Use 'jack_lsp -p | grep -B 1 output' to find some.", optIQ + 1);
 
   if (channels > MAXCH)
     ERR(J, "Channels %ld (JACK ports %ld) more than %d (%d).\n", channels, jackPorts,  MAXCH, MAXCH * (optIQ + 1));
