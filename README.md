@@ -293,7 +293,16 @@ There is no, currently.
 > **JACK Transport** allow us to sync several players,
 
 so we get multiple incoming channels with zero skew guaranteed. Good if we have several _non-interleaved_ data sets.
+
+Btw, note that for 16-bit aka s16le aka signed shorts (Q1.15) _incoming_ data, there is undefined behaviour of `-32768` value [^12], so it's better to avoid this value.
+
+To "play" raw data files (without `.wav` header), one may use like this. Note that some players may add some dither for 16-bit files.
+
+    mpv -ao=jack -vo=null --demuxer=rawaudio --demuxer-rawaudio-format=s16le --demuxer-rawaudio-rate=48000 --demuxer-rawaudio-channels=4 ./file.pcm
+    jack_lsp | grep mpv
+  
 * As for _resulting_ FFT data, there are last 16 screens are holded in screen memory; it should be easy to dump it to binary file, please feel free to implement this command. Data format is signed shorts (Q1.15) with **-327.67** to **327.67 dB** range, and **-32768** value is NODATA (out of bounds / non existent, etc).
+
 
 _I hate your pixels :-[_
 ---------------------
@@ -461,3 +470,4 @@ This program is distributed in the hope that it will be useful, but WITHOUT ANY 
 [^9]: https://github.com/x42/spectra.lv2
 [^10]: https://github.com/kfrlib/kfr/blob/main/docs/docs/installation.md
 [^11]: https://github.com/kfrlib/kfr/issues/209
+[^12]: https://gist.github.com/endolith/e8597a58bcd11a6462f33fa8eb75c43d
