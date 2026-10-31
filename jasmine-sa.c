@@ -31,9 +31,6 @@
 #include <X11/extensions/scrnsaver.h>
 
 #include <GL/glx.h>
-#define GLX_CONTEXT_MAJOR_VERSION_ARB 0x2091
-#define GLX_CONTEXT_MINOR_VERSION_ARB 0x2092
-typedef GLXContext (*glXCreateContextAttribsARBProc)(Display*, GLXFBConfig, GLXContext, Bool, const int*);
 
 #define C  "Ctrl"
 #define F  "FFT"
@@ -2132,7 +2129,7 @@ void initOpengl(void)
 {
   XVisualInfo *visual_pointer;
   XRenderPictFormat *pict_format;
-  GLXFBConfig fbconfig = 0, *fbconfigs;
+  GLXFBConfig *fbconfigs;
 
   int visualData[] = {
       GLX_RENDER_TYPE, GLX_RGBA_BIT,
@@ -2148,51 +2145,35 @@ void initOpengl(void)
       GLX_SAMPLES, optMsaa,
       None};
 
-  fbconfig = 0;
   int numfbconfigs;
   fbconfigs = glXChooseFBConfig(dpy, DefaultScreen(dpy), visualData, &numfbconfigs);
 
   for (int i = 0; i < numfbconfigs; i++)
   {
     visual_pointer = (XVisualInfo*) glXGetVisualFromFBConfig(dpy, fbconfigs[i]);
-    if (!visual_pointer)
-      continue;
+    if (visual_pointer)
+    {
+      pict_format = XRenderFindVisualFormat(dpy, visual_pointer->visual);
+      if ((!pict_format) || ((pict_format->direct.alphaMask > 0) == optAlpha))
+      {
+        XFree(fbconfigs);
+        visual.visual = visual_pointer->visual;
+        visual.depth = visual_pointer->depth;
+        glcontext = glXCreateContext(dpy, visual_pointer, 0, GL_TRUE);
+        XFree(visual_pointer);
+        XSync(dpy, False);
 
-    pict_format = XRenderFindVisualFormat(dpy, visual_pointer->visual);
-    if (!pict_format) {
-      XFree(visual_pointer);
-      continue;
+        if (!glcontext)
+          ERR(O, "X11 server '%s' does not support OpenGL.", getenv("DISPLAY"));
+
+        return;
+      }
+      else
+        XFree(visual_pointer);
     }
-
-    visual.visual = visual_pointer->visual;
-    visual.depth = visual_pointer->depth;
-    XFree(visual_pointer);
-
-    fbconfig = fbconfigs[i];
-    if ((pict_format->direct.alphaMask > 0) == optAlpha)
-      break;
   }
 
-  if (!fbconfig)
-      ERR(O, "No matching FB config found!");
-
-  // [8] NOTE: It is not necessary to create or make current to a context before calling glXGetProcAddressARB
-  glXCreateContextAttribsARBProc glXCreateContextAttribsARB = 0;
-  glXCreateContextAttribsARB = (glXCreateContextAttribsARBProc)
-  glXGetProcAddressARB( (const GLubyte *) "glXCreateContextAttribsARB" );
-
-  int attribs[] = { // change it for your needs
-      GLX_CONTEXT_MAJOR_VERSION_ARB, 2,
-      GLX_CONTEXT_MINOR_VERSION_ARB, 1,
-      0};
-
-  glcontext = glXCreateContextAttribsARB(dpy, fbconfig, 0, 1, attribs);
-
-  XSync(dpy, False);
-    if (!glcontext)
-      ERR(O, "X11 server '%s' does not support OpenGL.", getenv("DISPLAY"));
-
-  XFree(fbconfigs);
+  ERR(O, "No matching FB config found! %s", (optAlpha * optMsaa) ? "Trying both Alpha & MSAA on integrated GPU?" : "");
 }
 
 
@@ -2552,16 +2533,8 @@ int main(int argc, char *argv[])
 
   XWindowAttributes wa;
   XGetWindowAttributes(dpy, win, &wa);
-  MSG(X, "Depth: %d", wa.depth);
-  // Optional: Double check the resulting depth, else buffers etc. can fail.
-  depth = 24 + optAlpha * 8; // What is required
-  if (wa.depth != depth)
-  {
-    WRN(X, "Got depth %d instead of %d.", wa.depth, depth);
-    if (optOpengl)
-      WRN(O, "Trying both Alpha & MSAA on integrated GPU?"); // [7]
-    depth = wa.depth;
-  }
+  depth = wa.depth;
+  MSG(X, "Depth: %d", depth);
 
   if ((optOpengl) && (depth < 32) && (opacity < 100))
     WRN(O, "Opacity given, but can't be used with openGL but no Alpha.");
