@@ -1811,13 +1811,17 @@ disk_thread (void *arg)
     {
       DBV(F, "Ch. %d Started fft plan execute.", ch);
 
+// FIXME Shrink it. Why `gcc` is differ from `clang` here? How do I made it compiler independent?
+#ifdef __clang__
+      #define PREFIX (_Complex double *)
+#else
+      #define PREFIX
+#endif
       if (optType)
         if (optIQ)
-          // kfr_dft_execute_f64(plan_kfr[planNum], fftout[ch][0], fftin[ch][0], tmp); // This one is for `gcc`...
-          kfr_dft_execute_f64(plan_kfr[planNum], (_Complex double *)fftout[ch][0], (_Complex double *)fftin[ch][0], tmp); // ...and this one for `clang`
+          kfr_dft_execute_f64(plan_kfr[planNum], PREFIX fftout[ch][0], PREFIX fftin[ch][0], tmp);
         else
-          // kfr_dft_real_execute_f64(plan_kfr_real[planNum], fftout[ch][0], fftinR[ch], tmp); // This one is for `gcc`...
-          kfr_dft_real_execute_f64(plan_kfr_real[planNum], (_Complex double *)fftout[ch][0], fftinR[ch], tmp);  // ...and this one for `clang`
+          kfr_dft_real_execute_f64(plan_kfr_real[planNum], PREFIX fftout[ch][0], fftinR[ch], tmp);
       else
         fftw_execute(plan_fftw[planNum][ch]);
 
@@ -2173,7 +2177,7 @@ void initOpengl(void)
     }
   }
 
-  ERR(O, "No matching FB config found! %s", (optAlpha * optMsaa) ? "Trying both Alpha & MSAA on integrated GPU?" : "");
+  ERR(O, "No matching FB config found! %s", (!!optAlpha && !!optMsaa) ? "Trying both Alpha & MSAA on integrated GPU?" : "");
 }
 
 
