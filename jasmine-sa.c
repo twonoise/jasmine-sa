@@ -1,7 +1,7 @@
 /*
  * jasmine-sa is multichannel hi-res Spectrum Analyzer for X11 & JACK (Linux 64bit).
  * License: GPL version 2 or later.
- * See man page for compile; README.md for usage; tail for credits.
+ * See README.md for compile & usage; tail for credits.
  */
 
 #define GL_GLEXT_PROTOTYPES // For glWindowPos2i()
@@ -166,6 +166,7 @@ int xSize;
 int xShift;
 float deltaHz;
 int sampleNum;
+int xIsLogScale = 0;
 
 int yDbMin = -100;
 int yDbMax = 0;
@@ -266,7 +267,7 @@ int vbwLog;
 int vbw;
 int vbwContinue = 0;
 
-int rbwLog;
+int rbwLog = 2;
 int rbwLogMin;
 int rbwLogMax;
 float rbw;
@@ -728,7 +729,7 @@ void newScreen(int clear)
     for (int i = 0; i <= xGrids; i++) {
       plotGotoXY(DX + i * xGridSize + 4, DY + ySize + 6);
       if ((spanHz > 0) || (i == 0) || (i == xGrids))
-        plotStr("%.5g %s", (startHz + i * spanHz / (double)xGrids) / (double)units, (i == xGrids) ? UNITS2STR : "");
+        plotStr("%.5g %s", xIsLogScale ? (double)(startHz << i) : (startHz + i * spanHz / (double)xGrids) / (double)units,  (i == xGrids) ? UNITS2STR : "");
     }
 
   // Left Y axis labels: dB Pwr or dBV.
@@ -797,7 +798,11 @@ void plotOneChannel(int ch)
 
     for (int i = firstUsedBin; i <= lastUsedBin; i++)
     {
-      int x = (int)(i * (squeeze ? stepRel : stepAbs) + 0.0) + xShift;
+      double xd = (i * (squeeze ? stepRel : stepAbs) + 0.0);
+      if (xIsLogScale)
+        xd = log2(xd / (double) xSize * (1 << xGrids) + 1.0) * xGridSize;
+
+      int x = (int) xd + xShift; /* xShift should be 0 for log X scale */
 
       int y = data[mem][i][ch];
 
@@ -1144,8 +1149,8 @@ void instrumentReset (int cold)
   {
     startHz = xHzMin;
     spanHz = xHzMax - xHzMin;
-    (spanHz < 0.1 * kHz) ? (units = Hz) : (units = kHz);
-    stepAbs = stepRel = 1.0;
+    (spanHz < 0.1 * kHz) || (xIsLogScale) ? (units = Hz) : (units = kHz);
+    stepAbs = stepRel = (xIsLogScale) ? MINSTEP : 1.0;
     crtRayStyle = 0;
     for (int ch = 0; ch < MAXCH; ch++)
     {
@@ -1154,8 +1159,8 @@ void instrumentReset (int cold)
       measMode[ch] = optShowEnob;
     }
     stats = 0;
-    vbwLog = 0;
-    vbw = 1;
+    vbwLog = (xIsLogScale) ? 2 : 0;
+    vbw = 1 << vbwLog;
     phosphor = defPhospor;
   }
 
@@ -2351,6 +2356,12 @@ int main(int argc, char *argv[])
 
   if ((xSize > MAXXSIZE) || (ySize > MAXYSIZE))
     ERR(P, "Plot size %dx%d exceeds %dx%d.", xSize, ySize, MAXXSIZE, MAXYSIZE);
+
+  if ((xHzMin > 0) && (xGrids == log2(xHzMax / xHzMin))) { /* Like -h 16,16384, -h 16,65536,12 */
+    MSG(P, "Log X scale. Not for measurements.");
+    xIsLogScale = 1;
+    rbwLog = 4;
+  }
 
 // JACK Part 1
   const char *client_name = "jasmine-sa";
