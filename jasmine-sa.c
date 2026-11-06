@@ -680,8 +680,11 @@ void legend(void)
   plotStr("FFT: %ld", (1UL << fftSizeK));
   plotStr("Start:  %.6g %s", startHz DUNITS2STR);
   plotStr("Stop:   %.6g %s", (startHz + spanHz) DUNITS2STR);
-  plotStr("Center: %.6g %s", (startHz + spanHz / 2.0) DUNITS2STR);
-  plotStr("Span:   %.6g %s", spanHz DUNITS2STR);
+  if (! xIsLogScale)
+  {
+    plotStr("Center: %.6g %s", (startHz + spanHz / 2.0) DUNITS2STR);
+    plotStr("Span:   %.6g %s", spanHz DUNITS2STR);
+  }
   plotStr(RBW2STR);
   plotStr(VBW2STR);
   plotStr("FPS: %.4g x %ld", fftsPerSecond, roll);
@@ -1261,10 +1264,10 @@ void processKeyboard (int rk)
   }
 
   // Menu Page 0.
-  if (rk == 67) // F1
+  if ((rk == 67) && (! xIsLogScale)) // F1
     inputMode (1, "Center: ");
 
-  if (rk == 68) // F2
+  if ((rk == 68) && (! xIsLogScale)) // F2
     inputMode (2, "Span: ");
 
   if (rk == 69) // F3: RBW
@@ -1282,7 +1285,7 @@ void processKeyboard (int rk)
     setVbw(0);
   }
 
-  if (rk == 71) // F5: Marker
+  if ((rk == 71) && (! xIsLogScale)) // F5: Marker
   {
     if (menu != 5)
       mkrIsDelta = 0;
@@ -1339,7 +1342,7 @@ void processKeyboard (int rk)
   if (rk == 67 + 256) // F1: Stats
     stats = !stats;
 
-  if (rk == 71 + 256) // F5: Mkr to Center
+  if ((rk == 71 + 256) && (! xIsLogScale))  // F5: Mkr to Center
     if (marker[0] != -1)
     {
       // Note: freqHz is valid after marker was drawn once.
