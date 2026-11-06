@@ -267,7 +267,9 @@ This SA is not (only) musical, but more like scientific, these instrumensts ofte
 * There is no zero/negative frequencies allowed;
 * And, there is no measurements are possible, only estimations, as no Exact, Max, or Avg, display method for entire scale is useful.
 
-But feel free to implement log scale yourself: our code is _intended_ for user enhancements.
+_...But i really need it! :-[ ]_
+--------------------------------
+Well, you may try like `-h 16,16384` or `-h 16,65536,12`. But, measurements precision will be degraded, and many things like Center, Span, Marker, or IQ (complex or analytical) mode, will not work. It is mostly for white noise stimulus driven tests for reactive loads.
 
 _How do i move non-decorated window?_
 -------------------------------------
